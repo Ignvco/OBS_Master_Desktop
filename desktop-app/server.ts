@@ -1,7 +1,8 @@
 import { createServer, request as requestHttp, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
-import { stationMiddleware } from '../src/server/stationBridge.ts';
+import { stationMiddleware, beginNativeTake,commitNativeTake,releaseNativeTake } from '../src/server/stationBridge.ts';
+import {randomBytes} from 'node:crypto';
 
 const MIME: Record<string, string> = {
   '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
@@ -15,11 +16,68 @@ const MIME: Record<string, string> = {
 /** Public only on loopback; preserve existing OBS URLs at localhost:3000. */
 export type NativeDirectStatus = {state:string;pid:number|null;error:string|null;camera:number;url:string};
 export type DirectMonitorOptions = {port:number; token:string} | null;
-export function createStationHandler(staticDir: string, directStatus?: () => NativeDirectStatus, directMonitor?: () => DirectMonitorOptions) {
+export type TakeFrameAck = {takeId:string;frame:number};
+export type NativeTakeOptions = {
+  take:(revision:number,takeId:string)=>Promise<TakeFrameAck>;
+  rollback:(takeId:string)=>Promise<unknown>;
+};
+export function createStationHandler(staticDir: string, directStatus?: () => NativeDirectStatus, directMonitor?: () => DirectMonitorOptions, directTake?: NativeTakeOptions) {
   const root = resolve(staticDir);
   return (req: IncomingMessage, res: ServerResponse) => {
     const address = req.url || '/';
     const route = address.split('?')[0];
+    if (route === '/api/direct/take') {
+      if(req.method!=='POST'){res.writeHead(405);res.end();return;}
+      const host=req.headers.host??'';
+      const origin=req.headers.origin;
+      let allowed=/^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(host);
+      try{allowed=allowed&&!!origin&&new URL(origin).host===host&&new URL(origin).protocol==='http:';}
+      catch{allowed=false;}
+      if(!allowed){res.writeHead(403,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Origen del panel requerido'}));return;}
+      if(!String(req.headers['content-type']??'').startsWith('application/json')){res.writeHead(415);res.end();return;}
+      if(!directTake || directStatus?.().state!=='running'){
+        res.writeHead(503,{'Content-Type':'application/json'});
+        res.end(JSON.stringify({error:'Unity Camera no está activa'}));return;
+      }
+      let raw='';let tooLarge=false;
+      req.on('data',chunk=>{if(tooLarge)return;raw+=chunk.toString('utf8');if(raw.length>1024){tooLarge=true;raw='';}});
+      req.on('end',()=>{
+        void (async()=>{
+          let locked=false;
+          let takeId='';
+          try {
+            if(tooLarge)throw new Error('Orden Take demasiado grande');
+            const body=JSON.parse(raw);
+            if(!body||!Number.isSafeInteger(body.expectedRevision)||body.expectedRevision<0||body.type!=='Cut')
+              throw new Error('Take inválido: RC4B admite únicamente Cut');
+            const prepared=beginNativeTake(body.expectedRevision);
+            locked=true;
+            takeId=randomBytes(16).toString('hex');
+            const ack=await directTake.take(prepared.revision,takeId);
+            if(ack.takeId!==takeId||!Number.isFinite(ack.frame)||ack.frame<1)
+              throw new Error('El motor no confirmó el fotograma emitido');
+            commitNativeTake(prepared.ids,prepared.revision,takeId);
+            res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});
+            res.end(JSON.stringify({ok:true,takeId,frame:ack.frame,revision:prepared.revision,ids:prepared.ids}));
+          }catch(error){
+            let description=error instanceof Error?error.message:'Take no confirmado';
+            if(locked&&takeId){
+              try{await directTake.rollback(takeId);}
+              catch(rollbackError){
+                description+=' | La reversión no fue confirmada: revisa StreamYard antes de continuar';
+              }
+            }
+            if(!res.headersSent){
+              res.writeHead(409,{'Content-Type':'application/json','Cache-Control':'no-store'});
+              res.end(JSON.stringify({error:description}));
+            }
+          }finally{
+            if(locked)releaseNativeTake();
+          }
+        })();
+      });
+      return;
+    }
     if (route === '/api/direct/program.mjpg' || route === '/api/direct/preview.mjpg') {
       const host=req.headers.host??'';
       const origin=req.headers.origin;
@@ -111,8 +169,8 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
   };
 }
 
-export async function startStationServer(options: {port:number, staticDir:string, directStatus?:()=>NativeDirectStatus, directMonitor?:()=>DirectMonitorOptions}): Promise<Server[]> {
-  const handler = createStationHandler(options.staticDir,options.directStatus,options.directMonitor);
+export async function startStationServer(options: {port:number, staticDir:string, directStatus?:()=>NativeDirectStatus, directMonitor?:()=>DirectMonitorOptions, directTake?:NativeTakeOptions}): Promise<Server[]> {
+  const handler = createStationHandler(options.staticDir,options.directStatus,options.directMonitor,options.directTake);
   const listen = (host: string) => new Promise<Server>((resolveServer, rejectServer) => {
     const server = createServer(handler);
     server.once('error', rejectServer);
