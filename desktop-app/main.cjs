@@ -155,6 +155,7 @@ else {
         port: PORT,
         staticDir: path.join(__dirname,'dist'),
         directStatus: () => direct.status(),
+        directMonitor: () => direct.monitorToken ? {port:direct.monitorPort,token:direct.monitorToken} : null,
       });
       createWindow();
       createTray();
