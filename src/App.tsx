@@ -24,6 +24,7 @@ import { BroadcastControlSpace } from './components/spaces/BroadcastControlSpace
 import { ContentStudioSpace } from './components/spaces/ContentStudioSpace';
 import { AssetLibrarySpace } from './components/spaces/AssetLibrarySpace';
 import { BroadcastOverlayRenderer } from './components/overlays/BroadcastOverlayRenderer';
+import { DirectCompositeRenderer } from './components/overlays/DirectCompositeRenderer';
 import { INITIAL_COMPONENTS } from './constants/initialData';
 import { matchingLiveSources } from './utils/liveSources';
 import {addCustomGraphic,createCustomGraphic,createBlankGraphic,removeCustomGraphic,isCustomRegistry,CUSTOM_ID_PATTERN,matchesCustomOverlayUrl,customOverlayPath,defaultCustomSourceName} from './utils/componentRegistry';
@@ -33,6 +34,10 @@ export default function App() {
   const urlParams = new URLSearchParams(window.location.search);
   const overlayParam = urlParams.get('overlay') as ComponentType | null;
   const customOverlayId = urlParams.get('overlayId');
+
+  // Single transparent page consumed by the Unity Capture compositor.
+  // It contains every visible *published* graphic; no drafts are sent on air.
+  if (overlayParam === 'direct-program') return <DirectCompositeRenderer />;
 
   if (customOverlayId) {
     return CUSTOM_ID_PATTERN.test(customOverlayId)
