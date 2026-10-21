@@ -558,6 +558,37 @@ export default function App() {
     transitionBusy.current = true;
     setTransitionPending(true);
     try {
+      if(directProgramRunning) {
+        const preparedResponse=await fetch('/api/direct/preview',{cache:'no-store'});
+        if(!preparedResponse.ok)throw new Error('No se pudo consultar la preparación');
+        const prepared=(await preparedResponse.json()).preview as {revision:number;ids:string[]};
+        if(!Number.isSafeInteger(prepared?.revision)||!Array.isArray(prepared.ids))
+          throw new Error('Preview no tiene una preparación válida');
+        if(prepared.ids.length===0 && !window.confirm('Preview está vacío. ¿Quieres enviar solo la cámara a Program y retirar todas las gráficas?'))return;
+        setLiveFeedback('Take nativo: esperando confirmación del fotograma Unity Camera…');
+        const response=await fetch('/api/direct/take',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({type:'Cut',expectedRevision:prepared.revision}),
+        });
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok || !result.ok)
+          throw new Error(result.error || 'El motor no confirmó el corte a Program');
+        const published=await SharedStation.read();
+        if(published?.components){
+          publishedRef.current=published.components;
+          setPublishedComponents(published.components);
+          StorageService.saveComponents(published.components,false);
+        }
+        if(published?.customComponents){
+          publishedCustomRef.current=published.customComponents;
+          setPublishedCustomComponents(published.customComponents);
+          StorageService.saveCustomComponents(published.customComponents,false);
+        }
+        setLiveFeedback(`Cut confirmado por Unity Camera · fotograma ${result.frame}. Verifica recepción en StreamYard.`);
+        showToast('success','Take nativo confirmado','El motor envió el fotograma a Unity Camera. Confirma la señal en StreamYard.');
+        return;
+      }
       const name = transitionType || obsService.getStatus().currentTransitionName;
       if (!name) throw new Error('Selecciona una transición disponible en OBS.');
       await obsService.executeTransition(name);
