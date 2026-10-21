@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { ComponentType, CountdownState, CustomComponentRegistry, EditorialComponentConfig } from '../../types';
 import { SharedStation } from '../../services/sharedStation';
 import { StorageService } from '../../services/storage';
+import { INITIAL_COMPONENTS } from '../../constants/initialData';
 import { selectDirectProgramGraphics,selectDirectPreviewGraphics } from '../../utils/directComposition';
 import { GraphicComponentRenderer } from './GraphicComponentRenderers';
 import { BrandLogoLayer } from './BrandLogoLayer';
@@ -90,7 +91,12 @@ export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'previ
   const effectiveCountdown={...countdown,remainingSeconds:remaining};
   // Deterministic stacking: built-in catalogue order, then custom graphics.
   // Per-scene order is an upcoming Production Controller responsibility.
-  const graphics=mode==='preview' ? selectDirectPreviewGraphics(components,custom,previewIds) : selectDirectProgramGraphics(components,custom);
+  const graphics=(mode==='preview'
+    ? selectDirectPreviewGraphics(components,custom,previewIds)
+    : selectDirectProgramGraphics(components,custom)
+  ).map(config=>config.type==='logo-bug'&&!config.branding
+    ? {...config,branding:INITIAL_COMPONENTS['logo-bug'].branding}
+    : config);
   return <div className="fixed inset-0 w-[1920px] h-[1080px] pointer-events-none select-none bg-transparent overflow-hidden">
     <AnimatePresence>
       {graphics.map(config=>
