@@ -153,3 +153,29 @@ test('Program video proxy rejects cross-site requests and unavailable native mot
     await new Promise<void>(resolve=>server.close(()=>resolve()));
   }
 });
+
+test('Preview staging persists separately and cannot alter program graphics',async()=>{
+  const original=(await (await fetch(base+'/api/station/state')).json()).state;
+  const current=await (await fetch(base+'/api/direct/preview')).json();
+  assert.equal(Array.isArray(current.preview.ids),true);
+  const post=(body:unknown,origin=base)=>fetch(base+'/api/direct/preview',{
+    method:'POST',headers:{'Content-Type':'application/json',Origin:origin},
+    body:JSON.stringify(body),
+  });
+  const unauthorized=await post({ids:['banner'],expectedRevision:current.preview.revision},'https://external.invalid');
+  assert.equal(unauthorized.status,403);
+  const staged=await post({ids:['banner'],expectedRevision:current.preview.revision});
+  assert.equal(staged.status,200);
+  const payload=await staged.json();
+  assert.deepEqual(payload.preview.ids,['banner']);
+  assert.equal(payload.preview.revision,current.preview.revision+1);
+  const stale=await post({ids:[],expectedRevision:current.preview.revision});
+  assert.equal(stale.status,409);
+  const unlisted=await post({ids:['unknown-graphic'],expectedRevision:payload.preview.revision});
+  assert.equal(unlisted.status,409);
+  const after=(await (await fetch(base+'/api/station/state')).json()).state;
+  assert.deepEqual(after.components,original.components,'Preview must not touch Program');
+  assert.deepEqual(after.draftComponents,original.draftComponents,'Preview must not touch draft');
+  const restored=await post({ids:current.preview.ids,expectedRevision:payload.preview.revision});
+  assert.equal(restored.status,200);
+});
