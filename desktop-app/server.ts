@@ -22,7 +22,7 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
     if (route === '/api/direct/status') {
       const host=req.headers.host??'';
       const origin=req.headers.origin;
-      let trusted=/^(localhost|127\\.0\\.0\\.1|\\[::1\\]):\\d+$/.test(host);
+      let trusted=/^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(host);
       if(origin){try{trusted=trusted&&new URL(origin).host===host;}catch{trusted=false;}}
       if(!trusted){res.writeHead(403);res.end();return;}
       if(req.method!=='GET'){res.writeHead(405);res.end();return;}
