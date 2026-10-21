@@ -56,3 +56,29 @@ El marcador `data-direct-preview-revision` o `data-direct-take-id` se lee **ante
 - Mejora sostenida del número de posiciones distintas de la cinta y FPS reales de HTML con datos, no solo sensación.
 - Dos Take/Cut validados en esta misma build, además de 30 min sin colapso, 5 reinicios ordenados.
 - Si CDP no mejora suficiente o la transparencia falla, **no fusionar**: evaluar otro pipeline de renderización de movimiento, sin sacrificar compatibilidad con los diseños.
+
+## Primer test RC5C en Windows — fallo de dimensiones, corrección aplicada
+
+**Log real del usuario:**
+```text
+RC5C_BENCH engine=playwright mean=129.6ms min=92.4ms max=175.1ms frames=12
+CDP: PNG esperado (720, 1280, 4), recibido (1080, 1920, 4)
+FAILED ... Por seguridad, NO iniciamos Unity Camera
+```
+
+Este fallo es **de dimensiones de la captura directa CDP**; no demuestra por sí solo pérdida de transparencia ni lentitud relativa, porque el test se detuvo en el chequeo inicial de tamaño. Playwright clásico pasó, incluidos píxeles animados. El arranque protegido actuó correctamente y RC5M permanece intacto.
+
+**Corrección experimental:** `direct_html_capture.py` ahora envía `Page.captureScreenshot.clip={x:0,y:0,width:1920,height:1080,scale:devicePixelRatio}` (en lugar de omitir clip) para capturar **todo el lienzo**, no un recorte izquierdo, y calibra hasta una segunda captura si la versión local de Edge devuelve un tamaño inesperado. Lee ancho/alto del encabezado PNG y **rechaza** dimensiones erróneas: nunca pone a salir al aire una imagen sin tamaño correcto, ni disimula el error redimensionando automáticamente en OpenCV. Conserva `Emulation.setDefaultBackgroundColorOverride` transparente.
+
+**Prueba ampliada:** además de fondo alpha 0, gráfico sólido y capa semitransparente, se añadió un elemento en el borde **derecho/inferior** de la composición para detectar recortes disfrazados de escalado. Se prueba también el encabezado binario PNG. Ninguna prueba se ha ejecutado todavía en Windows después de este arreglo.
+
+### Reintentar sin clonar otro proyecto
+
+Cerrar completamente Electron y Unity Camera, después ejecutar CMD en el clon ya existente:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-html-cdp"
+git pull origin v5-html-cdp
+INICIAR_RC5_CDP_MOTION_WINDOWS.bat
+```
+
+Aportar `RC5C_BENCH` para Playwright y CDP si pasan; si vuelve a fallar **no intentar iniciar el motor** y copiar el error. El test y el iniciador bloquean el uso de CDP ante fallo. Una comparación con CDP más lento o sin ventaja sustancial no justifica integrarlo: mantener RC5M y evaluar otro pipeline de animación.
