@@ -7,6 +7,7 @@ path available. Both paths return PNG bytes. The caller still performs the
 Preview revision / Program take-id checks before and after each capture.
 """
 import base64
+import struct
 
 
 class HtmlFrameCapture:
@@ -19,6 +20,8 @@ class HtmlFrameCapture:
         self.engine = engine
         self.scale = scale
         self.session = None
+        self._clip = None
+        self._expected = None
 
     def open(self):
         if self.engine == "cdp":
@@ -29,6 +32,24 @@ class HtmlFrameCapture:
                 "Emulation.setDefaultBackgroundColorOverride",
                 {"color": {"r": 0, "g": 0, "b": 0, "a": 0}},
             )
+            viewport = self.page.viewport_size
+            if viewport is None:
+                raise RuntimeError("CDP requiere un viewport conocido")
+            width, height = viewport["width"], viewport["height"]
+            # Raw CDP Page.captureScreenshot ignores Playwright's
+            # screenshot(scale="device") transformation: in the field it
+            # returned 1920x1080 instead of the requested 1280x720.
+            # Use Page.Viewport.clip.scale in CSS/DIP units, preserving the
+            # entire authored stage rather than cropping its right edge.
+            screenshot_factor = self.page.evaluate("window.devicePixelRatio") if self.scale == "device" else 1.0
+            self._expected = (
+                round(width * screenshot_factor),
+                round(height * screenshot_factor),
+            )
+            self._clip = {
+                "x": 0, "y": 0, "width": width, "height": height,
+                "scale": screenshot_factor,
+            }
         return self
 
     def screenshot(self):
@@ -42,16 +63,44 @@ class HtmlFrameCapture:
             )
         if self.session is None:
             raise RuntimeError("CDP capture session is not open")
-        encoded = self.session.send(
-            "Page.captureScreenshot",
-            {
-                "format": "png",
-                "fromSurface": True,
-                "captureBeyondViewport": False,
-                "optimizeForSpeed": True,
-            },
-        )
-        return base64.b64decode(encoded["data"], validate=True)
+        def request():
+            encoded = self.session.send(
+                "Page.captureScreenshot",
+                {
+                    "format": "png",
+                    "fromSurface": True,
+                    "captureBeyondViewport": False,
+                    "optimizeForSpeed": True,
+                    "clip": self._clip,
+                },
+            )
+            return base64.b64decode(encoded["data"], validate=True)
+
+        output = request()
+        actual = self._png_size(output)
+        if actual != self._expected:
+            # Edge versions can apply Page.Viewport.scale differently.
+            # Calibrate ONCE, using observed actual pixel dimensions and
+            # retrying a scaled capture; do not resize PNG in Python.
+            factor = self._expected[0] / max(1, actual[0])
+            self._clip["scale"] *= factor
+            output = request()
+            actual = self._png_size(output)
+        if actual != self._expected:
+            raise RuntimeError(
+                f"CDP entregó PNG {actual[0]}x{actual[1]}, "
+                f"esperado {self._expected[0]}x{self._expected[1]}; "
+                "captura detenida para proteger geometría y alpha"
+            )
+        return output
+
+    @staticmethod
+    def _png_size(data):
+        # PNG IHDR dimensions allow verifying output size without decoding
+        # the entire frame twice (the compositor does that once later).
+        if len(data) < 24 or data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+            raise RuntimeError("CDP no entregó un PNG válido")
+        return struct.unpack(">II", data[16:24])
 
     def close(self):
         if self.session is not None:
