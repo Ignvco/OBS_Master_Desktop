@@ -22,7 +22,14 @@ export function getDirectPreview():DirectPreviewState {
   try {
     const read=JSON.parse(readFileSync(FILE,'utf8'));
     if(read.version===1&&Number.isSafeInteger(read.revision)&&read.revision>=0&&validDirectPreviewIds(read.ids)) {
-      cached=read;return structuredClone(cached);
+      const validated: DirectPreviewState = {
+        version: 1,
+        revision: read.revision,
+        ids: [...read.ids],
+        updatedAt: typeof read.updatedAt === 'string' ? read.updatedAt : new Date(0).toISOString(),
+      };
+      cached = validated;
+      return structuredClone(validated);
     }
   }catch{/* new installation */}
   return initial();
