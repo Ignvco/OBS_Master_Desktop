@@ -28,23 +28,27 @@ def percentile(samples, fraction):
     return values[min(len(values) - 1, int((len(values) - 1) * fraction))]
 
 
-def bench_mode(name, device, codec, width, height, target_fps, duration, warmup):
-    cap = cv2.VideoCapture(device, cv2.CAP_DSHOW)
+def bench_mode(name, device, codec, width, height, target_fps, duration, warmup, backend=cv2.CAP_DSHOW, codec_last=False):
+    cap = cv2.VideoCapture(device, backend)
     if not cap.isOpened():
         print(f"{name}: ERROR: DirectShow cannot open camera {device}", flush=True)
         return None
     try:
-        if codec:
+        print(f"{name}: backend={cap.getBackendName()}", flush=True)
+        if codec and not codec_last:
             attempted = cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*codec))
-            print(f"{name}: request FourCC={codec}, accepted-set={attempted}", flush=True)
+            print(f"{name}: request FourCC={codec} FIRST, accepted-set={attempted}", flush=True)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         cap.set(cv2.CAP_PROP_FPS, target_fps)
+        if codec and codec_last:
+            attempted = cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*codec))
+            print(f"{name}: request FourCC={codec} LAST, accepted-set={attempted}", flush=True)
         negotiated = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
                       int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         advertised = cap.get(cv2.CAP_PROP_FPS)
         fourcc = codec_label(cap.get(cv2.CAP_PROP_FOURCC))
-        print(f"{name}: negotiated {negotiated[0]}x{negotiated[1]} @ {advertised:.1f} fps; FourCC={fourcc}", flush=True)
+        print(f"{name}: reported {negotiated[0]}x{negotiated[1]} @ {advertised:.1f} fps; output subtype={fourcc}", flush=True)
 
         # Autofocus / autoexposure and camera buffer may need to settle.
         end_warmup = time.perf_counter() + warmup
@@ -58,6 +62,7 @@ def bench_mode(name, device, codec, width, height, target_fps, duration, warmup)
         convert_ms = []
         total = 0
         errors = 0
+        actual_size = None
         start = time.perf_counter()
         until = start + duration
         while time.perf_counter() < until:
@@ -69,6 +74,7 @@ def bench_mode(name, device, codec, width, height, target_fps, duration, warmup)
                 continue
             _rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             t2 = time.perf_counter()
+            actual_size = (int(frame.shape[1]), int(frame.shape[0]))
             read_ms.append((t1 - t0) * 1000)
             convert_ms.append((t2 - t1) * 1000)
             total += 1
@@ -88,11 +94,14 @@ def bench_mode(name, device, codec, width, height, target_fps, duration, warmup)
             "errors": errors,
             "fourcc": fourcc,
             "resolution": negotiated,
+            "actual_size": actual_size,
+            "backend": cap.getBackendName(),
         }
         print(
             f"{name}: REAL {measured:.1f} FPS | read={result['read_mean_ms']:.1f}ms"
             f" (p50={result['read_median_ms']:.1f}, p95={result['read_p95_ms']:.1f})"
-            f" | BGR->RGB={result['convert_mean_ms']:.1f}ms | bad frames={errors}",
+            f" | BGR->RGB={result['convert_mean_ms']:.1f}ms | bad frames={errors}"
+            f" | frame actual={actual_size[0]}x{actual_size[1]}",
             flush=True,
         )
         return result
@@ -109,18 +118,23 @@ def main():
     print("OBS MASTER RC5 - MEASURE REAL PHYSICAL CAMERA THROUGHPUT", flush=True)
     print("Do NOT run while Unity Camera or another app is using the webcam.", flush=True)
     cases = [
-        ("default-720p", None, 1280, 720),
-        ("MJPG-720p", "MJPG", 1280, 720),
-        ("YUY2-720p", "YUY2", 1280, 720),
-        ("default-480p", None, 640, 480),
+        ("default-720p", None, 1280, 720, cv2.CAP_DSHOW, False),
+        ("MJPG-first-720", "MJPG", 1280, 720, cv2.CAP_DSHOW, False),
+        ("MJPG-last-720", "MJPG", 1280, 720, cv2.CAP_DSHOW, True),
+        ("YUY2-last-720", "YUY2", 1280, 720, cv2.CAP_DSHOW, True),
+        ("default-960x540", None, 960, 540, cv2.CAP_DSHOW, False),
+        ("default-640x360", None, 640, 360, cv2.CAP_DSHOW, False),
+        ("default-640x480", None, 640, 480, cv2.CAP_DSHOW, False),
+        ("MSMF-720p", None, 1280, 720, cv2.CAP_MSMF, False),
     ]
     results = []
-    for name, codec, width, height in cases:
+    for name, codec, width, height, backend, codec_last in cases:
         print("", flush=True)
         try:
             result = bench_mode(
                 name, args.camera, codec, width, height, 30,
                 max(3.0, args.seconds), max(0.5, args.warmup),
+                backend=backend,codec_last=codec_last,
             )
             if result is not None:
                 results.append(result)
@@ -128,10 +142,12 @@ def main():
             print(f"{name}: ERROR {error}", flush=True)
     print("\n==== COMPARATIVE RESULTS (measured, not negotiated) ====", flush=True)
     for result in results:
+        width, height = result["actual_size"]
         print(
-            f"{result['mode']:15s} | {result['fps']:5.1f} FPS | "
+            f"{result['mode']:17s} | {result['fps']:5.1f} FPS | "
             f"read {result['read_mean_ms']:6.1f}ms | "
-            f"FourCC {result['fourcc']}",
+            f"actual {width}x{height} | "
+            f"{result['backend']} | output subtype {result['fourcc']}",
             flush=True,
         )
     if not results:
