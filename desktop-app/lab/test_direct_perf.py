@@ -6,7 +6,54 @@ No webcam, Unity driver, StreamYard or OBS Master process is required.
 """
 import unittest
 import numpy as np
-from direct_graphics import compile_overlay, blend_overlay_inplace
+from direct_graphics import compile_overlay, blend_overlay_inplace, configure_capture
+
+
+class NegotiationOrderTests(unittest.TestCase):
+    def test_mjpg_requested_last_after_dimensions_and_fps(self):
+        import cv2
+
+        class CaptureSpy:
+            def __init__(self):
+                self.calls = []
+
+            def set(self, prop, value):
+                self.calls.append((prop, value))
+                return True
+
+        cap = CaptureSpy()
+        accepted = configure_capture(cap, 1280, 720, 30, "MJPG")
+        self.assertTrue(accepted)
+        self.assertEqual([prop for prop, _ in cap.calls], [
+            cv2.CAP_PROP_FRAME_WIDTH,
+            cv2.CAP_PROP_FRAME_HEIGHT,
+            cv2.CAP_PROP_FPS,
+            cv2.CAP_PROP_FOURCC,
+        ])
+        self.assertEqual(int(cap.calls[-1][1]), cv2.VideoWriter_fourcc(*"MJPG"))
+
+    def test_bad_codec_rejected_before_touching_device(self):
+        class CaptureSpy:
+            def set(self, *_):
+                raise AssertionError("Camera must not be configured")
+
+        with self.assertRaises(ValueError):
+            configure_capture(CaptureSpy(), 1280, 720, 30, "INVALID")
+
+    def test_default_capture_does_not_change_codec(self):
+        import cv2
+
+        class CaptureSpy:
+            def __init__(self):
+                self.properties = []
+
+            def set(self, prop, value):
+                self.properties.append(prop)
+                return True
+
+        cap = CaptureSpy()
+        self.assertIsNone(configure_capture(cap, 1280, 720, 30, ""))
+        self.assertNotIn(cv2.CAP_PROP_FOURCC, cap.properties)
 
 
 class FastBlendTests(unittest.TestCase):
