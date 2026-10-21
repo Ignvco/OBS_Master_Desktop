@@ -23,6 +23,8 @@
     "asar": true,
     "files": [
       "main.cjs",
+      "direct-process.cjs",
+      "lab/**/*",
       "assets/**/*",
       "dist/**/*",
       "compiled/**/*",
