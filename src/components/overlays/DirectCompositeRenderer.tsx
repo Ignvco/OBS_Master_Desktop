@@ -43,7 +43,8 @@ export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'previ
   const [custom,setCustom]=useState<CustomComponentRegistry>(()=>StorageService.loadCustomComponents());
   const [countdown,setCountdown]=useState<CountdownState>(()=>StorageService.loadCountdown());
   const [,setClock]=useState(0);
-  const [previewIds,setPreviewIds]=useState<string[]>([]);
+  const [previewState,setPreviewState]=useState<{revision:number;ids:string[]}>({revision:0,ids:[]});
+  const [directTakeId,setDirectTakeId]=useState('');
 
   useEffect(()=>{
     document.body.style.backgroundColor='transparent';
@@ -54,6 +55,8 @@ export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'previ
       if(state.components)setComponents(state.components);
       if(state.customComponents)setCustom(state.customComponents);
       if(state.countdown)setCountdown(state.countdown);
+      if(typeof state.directTakeId==='string')setDirectTakeId(state.directTakeId);
+      if(typeof state.directTakeId==='string')setDirectTakeId(state.directTakeId);
     }).catch(error=>console.warn('Direct compositor: station read failed',error));
     const unsubscribe=SharedStation.watch(state=>{
       if(!alive)return;
@@ -77,7 +80,8 @@ export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'previ
         const response=await fetch('/api/direct/preview',{cache:'no-store'});
         if(!response.ok) return;
         const payload=await response.json();
-        if(active && Array.isArray(payload.preview?.ids)) setPreviewIds(payload.preview.ids);
+        if(active && Array.isArray(payload.preview?.ids) && Number.isSafeInteger(payload.preview?.revision))
+          setPreviewState({revision:payload.preview.revision,ids:payload.preview.ids});
       }catch{/* hold last valid Preview until station recovers */}
     };
     void poll();
@@ -92,12 +96,15 @@ export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'previ
   // Deterministic stacking: built-in catalogue order, then custom graphics.
   // Per-scene order is an upcoming Production Controller responsibility.
   const graphics=(mode==='preview'
-    ? selectDirectPreviewGraphics(components,custom,previewIds)
+    ? selectDirectPreviewGraphics(components,custom,previewState.ids)
     : selectDirectProgramGraphics(components,custom)
   ).map(config=>config.type==='logo-bug'&&!config.branding
     ? {...config,branding:INITIAL_COMPONENTS['logo-bug'].branding}
     : config);
-  return <div className="fixed inset-0 w-[1920px] h-[1080px] pointer-events-none select-none bg-transparent overflow-hidden">
+  return <div
+    data-direct-preview-revision={mode==='preview'?String(previewState.revision):undefined}
+    data-direct-take-id={mode==='program'?directTakeId:undefined}
+    className="fixed inset-0 w-[1920px] h-[1080px] pointer-events-none select-none bg-transparent overflow-hidden">
     <AnimatePresence>
       {graphics.map(config=>
         <DirectGraphic key={motionReplayKey(config.instanceId||config.id||config.type,config.animationReplay)}
