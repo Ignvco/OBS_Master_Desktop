@@ -25,7 +25,7 @@ RENDER_W, RENDER_H = 1920, 1080
 
 lock = threading.Lock()
 stop = threading.Event()
-state = {"overlay": None, "error": None, "captures": 0, "renderer_done": False}
+state = {"overlay": None, "preview_overlay": None, "error": None, "preview_error": None, "captures": 0, "renderer_done": False}
 
 DEMO = """
 <!DOCTYPE html>
@@ -81,8 +81,10 @@ html, body {
 """
 
 
-def render_overlay(url):
-    """Playwright owns its browser; cleanup must occur before Playwright exits."""
+def render_overlay(url, channel="program"):
+    """Each channel owns its Playwright lifecycle; Preview never overwrites Program."""
+    slot = "overlay" if channel == "program" else "preview_overlay"
+    error_slot = "error" if channel == "program" else "preview_error"
     try:
         with sync_playwright() as playwright:
             browser = None
@@ -138,19 +140,20 @@ def render_overlay(url):
                         inverse = 1.0 - alpha
 
                         with lock:
-                            state["overlay"] = (foreground, inverse)
-                            state["captures"] += 1
-                            state["error"] = None
+                            state[slot] = (foreground, inverse)
+                            if channel == "program":
+                                state["captures"] += 1
+                            state[error_slot] = None
 
                     except Exception as exc:
                         if stop.is_set():
                             break
                         with lock:
-                            state["error"] = str(exc)
+                            state[error_slot] = str(exc)
                         stop.wait(0.5)
 
                     elapsed = time.perf_counter() - started
-                    stop.wait(max(0, 0.1 - elapsed))
+                    stop.wait(max(0, (0.1 if channel == "program" else 0.75) - elapsed))
 
             finally:
                 # CRITICO: cerrar ANTES de salir de sync_playwright().
@@ -169,12 +172,13 @@ def render_overlay(url):
 
     except Exception as exc:
         with lock:
-            state["error"] = str(exc)
+            state[error_slot] = str(exc)
         if not stop.is_set():
             print("ERROR HTML:", exc, flush=True)
     finally:
-        with lock:
-            state["renderer_done"] = True
+        if channel == "program":
+            with lock:
+                state["renderer_done"] = True
 
 
 def listen_commands():
@@ -192,6 +196,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="")
     parser.add_argument("--camera", type=int, default=0)
+    parser.add_argument("--preview-url", default="http://127.0.0.1:3000/?overlay=direct-preview")
     args = parser.parse_args()
 
     print("OBS MASTER DIRECT GRAPHICS", flush=True)
@@ -208,6 +213,13 @@ def main():
         name="OBS-MASTER-HTML-Renderer",
     )
     worker.start()
+    preview_worker = None
+    if os.environ.get("STDQ_DIRECT_MONITOR_TOKEN"):
+        preview_worker = threading.Thread(
+            target=render_overlay, args=(args.preview_url, "preview"),
+            daemon=True, name="OBS-MASTER-Preview-Renderer",
+        )
+        preview_worker.start()
     cap = None
     monitor = None
     monitor_token = os.environ.get("STDQ_DIRECT_MONITOR_TOKEN", "")
@@ -287,8 +299,10 @@ def main():
                     rgb = np.empty((H, W, 3), dtype=np.uint8)
                     rgb[:] = (19, 22, 30)
 
+                base_rgb = rgb
                 with lock:
                     overlay = state["overlay"]
+                    preview_overlay = state["preview_overlay"]
                     captures = state["captures"]
                     error = state["error"]
 
@@ -313,6 +327,25 @@ def main():
                     )
                     if ok:
                         monitor.publish(jpeg.tobytes())
+
+                # Independently composited Preview: same physical input frame,
+                # different HTML overlay. NEVER send Preview to Unity Capture.
+                if monitor is not None and counter % 8 == 0:
+                    if preview_overlay is not None:
+                        p_fg, p_inverse = preview_overlay
+                        preview_rgb = np.clip(
+                            base_rgb.astype(np.float32) * p_inverse + p_fg,
+                            0, 255,
+                        ).astype(np.uint8)
+                    else:
+                        preview_rgb = base_rgb
+                    small = cv2.resize(preview_rgb, (640, 360), interpolation=cv2.INTER_AREA)
+                    ok, jpeg = cv2.imencode(
+                        ".jpg", cv2.cvtColor(small, cv2.COLOR_RGB2BGR),
+                        [int(cv2.IMWRITE_JPEG_QUALITY), 70],
+                    )
+                    if ok:
+                        monitor.publish_preview(jpeg.tobytes())
 
                 cam.sleep_until_next_frame()
 
@@ -342,7 +375,9 @@ def main():
         # Capturas Playwright pueden durar 10 s y page.goto hasta 20 s.
         # No anunciar cierre limpio si el hilo sigue vivo.
         worker.join(timeout=30)
-        if worker.is_alive():
+        if preview_worker is not None:
+            preview_worker.join(timeout=30)
+        if worker.is_alive() or (preview_worker is not None and preview_worker.is_alive()):
             print(
                 "ADVERTENCIA: renderizador HTML sigue cerrando. "
                 "Revisa procesos del laboratorio.",
