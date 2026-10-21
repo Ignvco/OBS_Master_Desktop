@@ -84,3 +84,37 @@ Recuerda que **desactivar MJPEG no elimina los renderizadores Playwright** y pue
 - Si la mejora no se produce, NO fusionar `v5-perf`: siguiente experimento es el formato de webcam (YUY2/MJPEG), rasterización HTML a 1080p o una vía GPU, cada uno con métricas.
 
 **Importante:** no confundir `v5-perf` con una nueva pantalla ni rama de producto. Es un laboratorio reversible; el único Panel En Vivo sigue siendo el aprobado.
+
+## Hallazgo con instrumentación real: cuello de botella en cámara
+
+El usuario ejecutó RC5 en Windows y aportó 15 ventanas de telemetría con resultados persistentes entre **8,7 y 10,0 FPS** a pesar de pedir 30 FPS. Valores típicos: **camera=~76–95ms**, **blend=~6–9ms**, **send=~6–9ms**, **monitors=~5–8ms**, **sleep=~0ms**. El tiempo de cámara incluye `cap.read` y la conversión BGR→RGB; no se ha separado aún. La captura HTML Program/Preview tarda cientos de ms por screenshot, pero corre en hilos independientes.
+
+Se concluye que **la etapa de entrada de cámara es el primer limitante medible**, no que el servidor local o Unity Camera sean la causa. El controlador reporta `1280x720 30 FPS`, pero dicho valor es negociado/solicitado, no una medición. El FourCC reportado se mostró como caracteres inválidos; RC5 ahora imprime en su lugar un valor hexadecimal cuando no corresponde a ASCII imprimible.
+
+### Nuevo diagnóstico independiente (antes de cambiar el formato de la cámara en el motor)
+
+Con OBS MASTER cerrado desde la bandeja, Unity Camera detenida, StreamYard sin acceso a la cámara, y sin otra aplicación usando el dispositivo, desde **CMD** en el clon experimental:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-perf"
+git pull origin v5-perf
+DIAGNOSTICO_CAMARA_RC5_WINDOWS.bat
+```
+
+El benchmark Python usa **el mismo backend DirectShow** que Direct Engine, mide FPS efectivos (frames válidos/segundo), media/mediana/p95 del tiempo de `cap.read` y la conversión BGR→RGB. Compara cuatro casos separados:
+- DEFAULT 1280×720 30.
+- MJPG 1280×720 30.
+- YUY2 1280×720 30.
+- DEFAULT 640×480 30 como control de resolución.
+
+La prueba no emite video, no guarda fotogramas ni accede a StreamYard. No cambia de forma permanente los ajustes de la webcam; los valores se solicitan temporalmente al abrir DirectShow en cada modo. Si un formato se rechaza, registra el resultado y sigue probando otros modos.
+
+**Si MJPG demuestra mejor FPS reales sin degradar resolución:** en la rama experimental, después de cerrar el benchmark, activar solo para RC5:
+```bat
+set STDQ_DIRECT_CAMERA_FOURCC=MJPG
+set STDQ_DIRECT_DEBUG=1
+set STDQ_DIRECT_MONITORS=1
+INICIAR_RC5_PERF_WINDOWS.bat
+```
+Con esto el motor solicita MJPG **antes** de negociar resolución/FPS y registra si el controlador acepta el cambio. Si los FPS disminuyen, para volver al modo original basta cerrar Electron y ejecutar `set STDQ_DIRECT_CAMERA_FOURCC=` en CMD. **No aplicar en la rama `v5-native` ni afirmar mejora sin medición.**
+
+Si los tres modos se mantienen en ~10 FPS aun cuando Direct Engine/Playwright no están activos, la causa probable está en el dispositivo/driver, exposición automática/iluminación, o limitaciones USB/formatos admitidos; confirmar con control de cámara en Windows y no intentar ocultarlo duplicando frames.
