@@ -179,3 +179,96 @@ test('Preview staging persists separately and cannot alter program graphics',asy
   const restored=await post({ids:current.preview.ids,expectedRevision:payload.preview.revision});
   assert.equal(restored.status,200);
 });
+
+test('RC4B native Take waits for Unity frame ACK before changing Program and blocks writes',async()=>{
+  const before=(await (await fetch(base+'/api/station/state')).json()).state;
+  assert.ok(before.components?.banner,'A published banner is needed for the test');
+  const oldPreview=(await (await fetch(base+'/api/direct/preview')).json()).preview;
+  const setup=await fetch(base+'/api/direct/preview',{
+    method:'POST',headers:{Origin:base,'Content-Type':'application/json'},
+    body:JSON.stringify({ids:['banner'],expectedRevision:oldPreview.revision}),
+  });
+  assert.equal(setup.status,200);
+  const staged=(await setup.json()).preview;
+  let accept!:()=>void;
+  let opened!:()=>void;
+  const seen=new Promise<void>(resolve=>{opened=resolve;});
+  const engine={
+    take:(revision:number,takeId:string)=>{
+      assert.equal(revision,staged.revision);
+      return new Promise<{takeId:string;frame:number}>(resolve=>{
+        accept=()=>resolve({takeId,frame:77});
+        opened();
+      });
+    },
+    rollback:async()=>undefined,
+  };
+  const status=()=>({state:'running',pid:321,error:null,camera:0,url:'http://127.0.0.1:3000/?overlay=direct-program'});
+  const portServer=createServer(createStationHandler(staticDir,status,undefined,engine));
+  await new Promise<void>(resolve=>portServer.listen(0,'127.0.0.1',resolve));
+  const addr=portServer.address();
+  const remote=`http://127.0.0.1:${typeof addr==='object'&&addr?addr.port:0}`;
+  const post=(body:unknown)=>fetch(remote+'/api/direct/take',{
+    method:'POST',headers:{Origin:remote,'Content-Type':'application/json'},
+    body:JSON.stringify(body),
+  });
+  try{
+    const foreign=await fetch(remote+'/api/direct/take',{method:'POST',headers:{Origin:'https://other.invalid','Content-Type':'application/json'},body:'{}'});
+    assert.equal(foreign.status,403);
+    const inFlight=post({type:'Cut',expectedRevision:staged.revision});
+    await seen;
+    const middle=(await (await fetch(remote+'/api/station/state')).json()).state;
+    assert.deepEqual(middle.components,before.components,'No optimistic on-air state before video ACK');
+    const refused=await fetch(remote+'/api/station/state',{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({countdown:{remainingSeconds:1,isRunning:false,durationSeconds:1}}),
+    });
+    assert.equal(refused.status,423,'Concurrent station writes must be locked');
+    accept();
+    const success=await inFlight;
+    assert.equal(success.status,200);
+    const acknowledgement=await success.json();
+    assert.equal(acknowledgement.frame,77);
+    const after=(await (await fetch(remote+'/api/station/state')).json()).state;
+    assert.equal(after.components.banner.visibleInOBS,true);
+    assert.equal(after.directTakeId,acknowledgement.takeId);
+    assert.deepEqual(after.draftComponents,before.draftComponents);
+    assert.deepEqual(after.publicationHistory,before.publicationHistory);
+  }finally{
+    await new Promise<void>(resolve=>portServer.close(()=>resolve()));
+    const after=(await (await fetch(base+'/api/station/state')).json()).state;
+    const components=Object.fromEntries(Object.entries(after.components as Record<string,any>).map(([id,c])=>
+      [id,{...(c as object),visibleInOBS:before.components?.[id]?.visibleInOBS??false}]));
+    const restored=await fetch(base+'/api/station/state',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({components})});
+    assert.equal(restored.status,200);
+    const preview=(await (await fetch(base+'/api/direct/preview')).json()).preview;
+    const reset=await fetch(base+'/api/direct/preview',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({ids:oldPreview.ids,expectedRevision:preview.revision})});
+    assert.equal(reset.status,200);
+  }
+});
+
+test('RC4B engine Take rejection triggers rollback and never records success',async()=>{
+  const stateBefore=(await (await fetch(base+'/api/station/state')).json()).state;
+  const preview=(await (await fetch(base+'/api/direct/preview')).json()).preview;
+  let rollbackCalled=false;
+  const status=()=>({state:'running',pid:234,error:null,camera:0,url:'http://127.0.0.1:3000/?overlay=direct-program'});
+  const rejectedServer=createServer(createStationHandler(staticDir,status,undefined,{
+    take:async()=>{throw new Error('PREVIEW_NOT_READY');},
+    rollback:async()=>{rollbackCalled=true;},
+  }));
+  await new Promise<void>(resolve=>rejectedServer.listen(0,'127.0.0.1',resolve));
+  const a=rejectedServer.address();
+  const remote=`http://127.0.0.1:${typeof a==='object'&&a?a.port:0}`;
+  try {
+    const fail=await fetch(remote+'/api/direct/take',{
+      method:'POST',headers:{Origin:remote,'Content-Type':'application/json'},
+      body:JSON.stringify({type:'Cut',expectedRevision:preview.revision}),
+    });
+    assert.equal(fail.status,409);
+    assert.equal(rollbackCalled,true);
+    const current=(await (await fetch(base+'/api/station/state')).json()).state;
+    assert.deepEqual(current.components,stateBefore.components);
+  }finally{
+    await new Promise<void>(resolve=>rejectedServer.close(()=>resolve()));
+  }
+});
