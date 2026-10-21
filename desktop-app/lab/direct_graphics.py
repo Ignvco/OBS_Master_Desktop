@@ -21,6 +21,7 @@ import pyvirtualcam
 from playwright.sync_api import sync_playwright
 from direct_monitor import ProgramMonitor
 from direct_monitor_encoder import AsyncMonitorEncoder
+from direct_html_roi import STAGE_BOUNDS_JS, roi_plan, to_pixels
 
 W, H, FPS = 1280, 720, 30
 RENDER_W, RENDER_H = 1920, 1080
@@ -63,7 +64,8 @@ state = {"overlay": None, "preview_overlay": None, "preview_revision": -1,
          "captures": 0, "renderer_done": False,
          "render_program_ms": 0.0, "render_preview_ms": 0.0,
          "screenshot_program_ms": 0.0, "screenshot_preview_ms": 0.0,
-         "captures_preview": 0}
+         "captures_preview": 0,
+         "roi_program_area": 1.0, "roi_preview_area": 1.0}
 control_queue = queue.Queue()
 
 DEMO = """
@@ -179,11 +181,15 @@ def render_overlay(url, channel="program"):
     error_slot = "error" if channel == "program" else "preview_error"
     height = int(os.environ.get("STDQ_DIRECT_HTML_CAPTURE", "1080"))
     profile = html_capture_profile(height, channel)
+    roi_mode = os.environ.get("STDQ_DIRECT_HTML_ROI", "0") == "1"
+    if roi_mode and height != 720:
+        raise ValueError("STDQ_DIRECT_HTML_ROI requires STDQ_DIRECT_HTML_CAPTURE=720")
     print(
         f"HTML {channel}: CSS viewport={profile['viewport'][0]}x{profile['viewport'][1]} "
         f"DPR={profile['device_scale_factor']:.4f} "
         f"intervalo={profile['interval'] * 1000:.0f}ms "
-        f"modo={'rasterizado 720p' if height == 720 else 'original 1080p'}",
+        f"modo={'rasterizado 720p' if height == 720 else 'original 1080p'} "
+        f"ROI={'ON' if roi_mode else 'OFF'}",
         flush=True,
     )
     try:
@@ -222,31 +228,79 @@ def render_overlay(url, channel="program"):
                         marker = ("data-direct-preview-revision"
                                   if channel == "preview" else "data-direct-take-id")
                         selector = "[%s]" % marker
-                        before = page.locator(selector).get_attribute(marker, timeout=2500)
+                        clip = None
+                        blank = False
+                        if roi_mode:
+                            metadata = page.locator(selector).evaluate(
+                                STAGE_BOUNDS_JS, marker, timeout=2500,
+                            )
+                            before = metadata["marker"]
+                            clip, blank = roi_plan(metadata)
+                        else:
+                            before = page.locator(selector).get_attribute(marker, timeout=2500)
                         screenshot_started = time.perf_counter()
-                        data = page.screenshot(
-                            type="png",
-                            omit_background=True,
-                            animations="allow",
-                            scale=profile["screenshot_scale"],
-                            timeout=10000,
-                        )
+                        if blank:
+                            img = np.zeros((H, W, 4), dtype=np.uint8)
+                        else:
+                            kwargs = {
+                                "type": "png",
+                                "omit_background": True,
+                                "animations": "allow",
+                                "scale": profile["screenshot_scale"],
+                                "timeout": 10000,
+                            }
+                            if clip is not None:
+                                kwargs["clip"] = clip
+                            try:
+                                data = page.screenshot(**kwargs)
+                                img = cv2.imdecode(
+                                    np.frombuffer(data, dtype=np.uint8),
+                                    cv2.IMREAD_UNCHANGED,
+                                )
+                                if img is None:
+                                    raise RuntimeError("PNG no decodificado")
+                                if img.ndim == 2:
+                                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGRA)
+                                elif img.shape[2] == 3:
+                                    img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+                                if clip is not None:
+                                    px, py, pw, ph = to_pixels(clip)
+                                    if img.shape[:2] != (ph, pw):
+                                        raise ValueError(
+                                            f"ROI screenshot {img.shape[:2]} != {(ph,pw)}"
+                                        )
+                                    full = np.zeros((H, W, 4), dtype=np.uint8)
+                                    full[py:py + ph, px:px + pw] = img
+                                    img = full
+                            except Exception as roi_exc:
+                                if clip is None:
+                                    raise
+                                # Unsupported clipping must not interrupt on-air
+                                # graphics. Fall back to the proven full shot.
+                                print("HTML ROI fallback:", channel, roi_exc, flush=True)
+                                clip = None
+                                data = page.screenshot(
+                                    type="png", omit_background=True,
+                                    animations="allow",
+                                    scale=profile["screenshot_scale"],
+                                    timeout=10000,
+                                )
+                                img = cv2.imdecode(
+                                    np.frombuffer(data, dtype=np.uint8),
+                                    cv2.IMREAD_UNCHANGED,
+                                )
+                                if img is None:
+                                    raise RuntimeError("PNG fallback no decodificado")
+                                if img.ndim == 2:
+                                    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGRA)
+                                elif img.shape[2] == 3:
+                                    img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
                         screenshot_ms = (time.perf_counter() - screenshot_started) * 1000.0
                         after = page.locator(selector).get_attribute(marker, timeout=2500)
                         if before != after:
-                            # Snapshot changed while screenshot was being captured.
+                            # Never accept a Preview/Program frame from a
+                            # mixed revision or a racing Take.
                             continue
-                        img = cv2.imdecode(
-                            np.frombuffer(data, dtype=np.uint8),
-                            cv2.IMREAD_UNCHANGED,
-                        )
-                        if img is None:
-                            raise RuntimeError("PNG no decodificado")
-                        if len(img.shape) == 2:
-                            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGRA)
-                        elif img.shape[2] == 3:
-                            img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-
                         if height == 720 and img.shape[:2] != (H, W):
                             raise RuntimeError(
                                 f"Captura HD esperada {W}x{H}, "
@@ -265,6 +319,11 @@ def render_overlay(url, channel="program"):
                             state[error_slot] = None
                             state["render_preview_ms" if channel == "preview" else "render_program_ms"] = (time.perf_counter()-started)*1000.0
                             state["screenshot_preview_ms" if channel == "preview" else "screenshot_program_ms"] = screenshot_ms
+                            fraction = (
+                                (clip["width"] * clip["height"]) / (RENDER_W * RENDER_H)
+                                if clip is not None else (0.0 if blank else 1.0)
+                            )
+                            state["roi_preview_area" if channel == "preview" else "roi_program_area"] = fraction
                             if channel == "preview":
                                 state["captures_preview"] += 1
                                 state["preview_revision"] = int(after) if after and after.isdigit() else -1
@@ -457,6 +516,8 @@ def main():
             counter = 0
             last_status = time.monotonic()
             last_counter = 0
+            last_html_captures = 0
+            last_preview_captures = 0
             stat_ms = {"camera":0.0,"read":0.0,"convert":0.0,"blend":0.0,"send":0.0,"monitors":0.0,"sleep":0.0}
             stat_frames = 0
             active_override = None
@@ -501,6 +562,8 @@ def main():
                     screenshot_program_ms = state["screenshot_program_ms"]
                     screenshot_preview_ms = state["screenshot_preview_ms"]
                     captures_preview = state["captures_preview"]
+                    roi_program_area = state["roi_program_area"]
+                    roi_preview_area = state["roi_preview_area"]
 
                 # Control commands are consumed ONLY in the single camera
                 # output thread. This keeps output switching frame-aligned.
@@ -571,6 +634,15 @@ def main():
                     )
                     if error:
                         print("Aviso HTML:", error, flush=True)
+                    elapsed_html = max(.001, now - last_status)
+                    print(
+                        f"STDQ_HTML program={(captures-last_html_captures)/elapsed_html:.1f}fps "
+                        f"preview={(captures_preview-last_preview_captures)/elapsed_html:.1f}fps "
+                        f"ROI={int(roi_program_area*100)}%/{int(roi_preview_area*100)}%",
+                        flush=True,
+                    )
+                    last_html_captures = captures
+                    last_preview_captures = captures_preview
                     if monitor_encoder is not None:
                         print(monitor_encoder.report(), flush=True)
                     if stat_frames:
