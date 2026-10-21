@@ -27,7 +27,8 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo Midiendo DEFAULT, MJPG, YUY2 a 720p y DEFAULT a 480p.
+echo Midiendo 720p DEFAULT/MJPG-first/MJPG-last/YUY2-last,
+echo resoluciones 960x540 y 640x360, control 640x480 y Windows MSMF.
 echo Solo cambia parametros temporales de apertura de webcam.
 echo No graba imagenes, audio ni video.
 echo.
