@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { ComponentType, CountdownState, CustomComponentRegistry, EditorialComponentConfig } from '../../types';
 import { SharedStation } from '../../services/sharedStation';
 import { StorageService } from '../../services/storage';
-import { selectDirectProgramGraphics } from '../../utils/directComposition';
+import { selectDirectProgramGraphics,selectDirectPreviewGraphics } from '../../utils/directComposition';
 import { GraphicComponentRenderer } from './GraphicComponentRenderers';
 import { BrandLogoLayer } from './BrandLogoLayer';
 import { useLayerTimeline } from '../../hooks/useLayerTimeline';
@@ -37,11 +37,12 @@ function DirectGraphic({ config, countdown }: {config: EditorialComponentConfig;
     </Motion.div>
   );
 }
-export function DirectCompositeRenderer() {
+export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'preview'}) {
   const [components,setComponents]=useState<Record<ComponentType,EditorialComponentConfig>>(()=>StorageService.loadComponents());
   const [custom,setCustom]=useState<CustomComponentRegistry>(()=>StorageService.loadCustomComponents());
   const [countdown,setCountdown]=useState<CountdownState>(()=>StorageService.loadCountdown());
   const [,setClock]=useState(0);
+  const [previewIds,setPreviewIds]=useState<string[]>([]);
 
   useEffect(()=>{
     document.body.style.backgroundColor='transparent';
@@ -67,13 +68,29 @@ export function DirectCompositeRenderer() {
     };
   },[]);
 
+  useEffect(()=>{
+    if(mode!=='preview')return;
+    let active=true;
+    const poll=async()=>{
+      try{
+        const response=await fetch('/api/direct/preview',{cache:'no-store'});
+        if(!response.ok) return;
+        const payload=await response.json();
+        if(active && Array.isArray(payload.preview?.ids)) setPreviewIds(payload.preview.ids);
+      }catch{/* hold last valid Preview until station recovers */}
+    };
+    void poll();
+    const id=window.setInterval(()=>void poll(),800);
+    return ()=>{active=false;window.clearInterval(id);};
+  },[mode]);
+
   const remaining=countdown.isRunning&&!countdown.isPaused&&countdown.deadlineMs
     ? Math.max(0,Math.ceil((countdown.deadlineMs-Date.now())/1000))
     : countdown.remainingSeconds;
   const effectiveCountdown={...countdown,remainingSeconds:remaining};
   // Deterministic stacking: built-in catalogue order, then custom graphics.
   // Per-scene order is an upcoming Production Controller responsibility.
-  const graphics=selectDirectProgramGraphics(components,custom);
+  const graphics=mode==='preview' ? selectDirectPreviewGraphics(components,custom,previewIds) : selectDirectProgramGraphics(components,custom);
   return <div className="fixed inset-0 w-[1920px] h-[1080px] pointer-events-none select-none bg-transparent overflow-hidden">
     <AnimatePresence>
       {graphics.map(config=>
