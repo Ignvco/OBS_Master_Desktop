@@ -71,3 +71,28 @@ INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
 ```
 
 **PR draft** de RC5R hacia `v5-html-motion`; no merge a `v5-monitor-async`, `v5-native` ni `main` sin calidad y mediciones comprobadas en Windows.
+
+## Windows Edge RC5R benchmark real — PASS (21-oct-2026)
+
+Usuario ejecutó `DIAGNOSTICO_RC5R_HTML_REGION_WINDOWS.bat` en Windows 10, sin OBS MASTER ni Unity activos, con los siguientes resultados:
+
+```text
+RC5R_BENCH full_mean=149.6ms roi_mean=126.8ms clip=1725x510 CSS ticker_changes=443088
+test_edge_full_vs_roi_equal_alpha_and_ticker_motion ... ok
+test_empty_and_large_scenes_use_safe_paths ... ok
+test_small_graphic_returns_aligned_roi ... ok
+Ran 3 tests in 5.357s
+OK
+```
+
+Reducción media de tiempo de screenshot: **22,8ms (~15,24%)** para ese escenario sintético; **42,42% del área total del stage CSS** (1725×510 / 1920×1080). Las comparaciones de PNG completo y PNG reconstruido con ROI (alfa, máscaras/transparencias, texto y posición) pasaron en el test de referencia de Edge.
+
+**Decisión:** permite un **ensayo integrado privado** y controlado, sin aprobar todavía la optimización. Calcular límites: un screenshot individual de 126,8ms equivale a un techo aritmético de ~7,9 screenshots/s sin coste extra de DOM/evaluación/decode, muy lejos de 15 FPS continuos. `getBoundingClientRect`, solicitud adicional al navegador, PNG decode y composición final pueden reducir o eliminar esa ganancia en el motor completo. Monitorizar `Salida` y `STDQ_HTML` no confundir. Si Unity cae sostenidamente por debajo de ~28fps o HTML no mejora perceptiblemente frente a RC5H, revertir sin fusionar.
+
+**Próximo ensayo del mismo clon**, fuera de emisión pública:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-html-roi"
+INICIAR_RC5_HTML_REGION_WINDOWS.bat
+```
+
+Asegurar backup del perfil V5 compartido. Comprobar que el modo ROI registra `STDQ_HTML program=...fps preview=...fps ROI=...%/...%` y no aparece fallback continuo; medir al menos cinco ventanas `Salida / STDQ_MONITOR / STDQ_HTML / STDQ_PERF` y confirmar visual de la cinta, integridad alfa y Take con StreamYard. No fusionar automáticamente con RC5M.
