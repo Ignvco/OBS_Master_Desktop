@@ -4,7 +4,8 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { DirectProcess } = require('./direct-process.cjs');
 
-const DATA_DIR_NAME = 'STDQ OBS Master';
+// Keep unpackaged development data separate from the installed stable v4.2.
+const DATA_DIR_NAME = app.isPackaged ? 'STDQ OBS Master' : 'STDQ OBS Master V5 Native Dev';
 const APP_ID = 'cl.sitedijeraque.obsmaster';
 const PORT = 3000;
 let mainWindow;
