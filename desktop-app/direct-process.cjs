@@ -34,6 +34,7 @@ class DirectProcess {
     const parsed=new URL(this.url);
     if(parsed.protocol!=='http:' || parsed.hostname!=='127.0.0.1' || parsed.port!=='3000') throw Error('La URL de gráficos debe apuntar al servidor local 127.0.0.1:3000.');
     this.state='starting';this.lastError=null;
+    this._lineBuffer='';
     this.monitorToken=randomBytes(32).toString('hex');
     try {
       const proc=spawn(this.python,['-u',this.script,'--camera',String(this.camera),'--url',this.url],{
