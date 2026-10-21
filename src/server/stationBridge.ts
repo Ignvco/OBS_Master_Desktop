@@ -17,6 +17,7 @@ import {readStudioPresets,mutateStudioPresets} from './studioPresetsStore.ts';
 import {applyPublication,saveRevision,restoreRevisionToDraft,manageRevision, operationalOnlyPatch} from '../utils/publicationEngine.ts';
 import type {EditorialComponentConfig} from '../types/index.ts';
 import type {PublicationDocument} from '../utils/publicationEngine.ts';
+import {getDirectPreview,saveDirectPreview} from './directPreviewStore.ts';
 
 const FIELDS = new Set(['episode', 'components', 'customComponents', 'draftComponents', 'draftCustomComponents', 'countdown']);
 const FILE = resolve(DATA_DIRECTORY, 'station.json');
@@ -89,6 +90,35 @@ export function stationMiddleware(req: IncomingMessage, res: ServerResponse, nex
   // Read-only health/stream requests remain usable during maintenance.
   if (recoveryBusy && route?.startsWith('/api/station/') && req.method !== 'GET' && req.method !== 'HEAD') {
     json(res, 423, { error: 'Estación en mantenimiento: espera a que finalice el respaldo o la restauración antes de guardar o publicar.' });
+    return;
+  }
+  if (route === '/api/direct/preview') {
+    if (!safeOrigin(req)) { json(res,403,{error:'Origen local requerido'});return; }
+    if (req.method==='GET') {json(res,200,{preview:getDirectPreview()});return;}
+    if (req.method!=='POST') {json(res,405,{error:'Método no permitido'});return;}
+    const origin=req.headers.origin;
+    if(!origin){json(res,403,{error:'Se requiere origen del panel'});return;}
+    if(!String(req.headers['content-type']??'').startsWith('application/json')){
+      json(res,415,{error:'Solo se admite JSON'});return;
+    }
+    let body='';let tooLarge=false;
+    req.on('data',chunk=>{body+=chunk.toString('utf8');if(body.length>4096){tooLarge=true;body='';}});
+    req.on('end',()=>{
+      if(tooLarge){json(res,413,{error:'Selección demasiado grande'});return;}
+      try{
+        const action=JSON.parse(body);
+        if(!action||!Array.isArray(action.ids)||!Number.isSafeInteger(action.expectedRevision))throw new Error('Comando Preview inválido');
+        const station=load()??{};
+        const ids=new Set([
+          ...Object.keys((station.components??{}) as Record<string,unknown>),
+          ...Object.keys((station.customComponents??{}) as Record<string,unknown>),
+        ]);
+        const preview=saveDirectPreview(action.ids,ids,action.expectedRevision);
+        json(res,200,{preview});
+      }catch(error){
+        json(res,409,{error:error instanceof Error?error.message:'No se pudo preparar Preview'});
+      }
+    });
     return;
   }
   if (route === '/api/station/publications') {
