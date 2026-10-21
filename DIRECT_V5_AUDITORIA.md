@@ -115,3 +115,34 @@ Cámara física → **Capture Service** → **Scene Compositor** (Preview indepe
 8. Repetir al menos 5 veces, incluida salida de Electron mientras la cámara está encendida. Ejecutar 20 ciclos antes de declarar estabilidad.
 
 **Siguiente hito obligatorio**: integración del Production Controller, composición de escenas múltiple, monitores reales Preview/Program, comandos del Panel En Vivo existente, configuración real de entrada/salida y retirada definitiva de OBS WebSocket. No reemplazar simulaciones por estados meramente declarativos.
+
+
+## Implementación incremental — Compositor Program multi-gráfica RC2 (2026-10-21)
+
+**Cambios de código**
+
+- `src/components/overlays/DirectCompositeRenderer.tsx`: una página transparente **1920 × 1080** reutiliza `GraphicComponentRenderer`, `useLayerTimeline`, `BrandLogoLayer` y Motion para pintar simultáneamente gráficos publicados visibles; una sola suscripción SSE.
+- `src/utils/directComposition.ts`: selector determinista que **solo recibe registros publicados**; sin borradores, preserva `animationReplay` y agrega personalizados.
+- `src/App.tsx`: ruta especial `/?overlay=direct-program` antes de las páginas legacy.
+- `desktop-app/main.cjs` y `direct-process.cjs`: el motor Unity Capture ahora captura `/?overlay=direct-program`, no solo `lower-third`.
+- `desktop-app/server.ts`: `GET /api/direct/status` obtiene el estado **real del supervisor**, solo lectura, host local y verificación de Origin; sin fingir entrega de frames a StreamYard.
+- `src/tests/directComposition.test.ts` y `src/tests/desktopServer.test.ts`: pruebas unitarias de selección sin borrador y disponibilidad/seguridad del endpoint.
+- `PROBAR_DIRECT_COMPOSICION_WINDOWS.ps1`: prueba **externa**, no parte de la interfaz de producción; activa temporalmente `lower-third` y `banner` ya publicados mediante cambios exclusivamente operativos y restaura las banderas al terminar.
+
+**Validaciones pendientes**
+
+- Esta modificación se realizó después de las verificaciones Windows informadas por el usuario. Volver a ejecutar `npm run lint`, `npm run test:core`, `npm run build` y `npm run desktop:server`.
+- Probar en StreamYard la composición múltiple y Motion sin pérdida de frames perceptible.
+- La aplicación todavía **no conecta los botones originales En Vivo con el motor directo**, y no hay dos monitores de video reales Preview/Program. Tampoco hay escenas independientes ni interfaz de configuración. Por tanto **NO declarar integración v5.0 terminada**.
+- La ruta compositiva aplica un orden determinista catálogo → gráficos personalizados. El orden específico por escena y las transiciones entre escenas pertenecen al siguiente hito.
+- El estado `running` del supervisor solo confirma que el proceso informó `SALIDA ACTIVA`, **no confirma** que StreamYard haya consumido fotogramas.
+
+**Prueba acotada**
+
+1. `git pull origin v5-native`; ejecuta las cuatro verificaciones; detén OBS MASTER Desktop y el Python externo antes de actualizar.
+2. Vuelve a copiar `dist` a `desktop-app/dist` y ejecuta `npm start` desde `desktop-app` (ver instrucciones de fase anterior).
+3. Inicia Unity Camera **desde la bandeja** y comprueba `http://127.0.0.1:3000/api/direct/status` (estado running).
+4. Con StreamYard seleccionando `Unity Video Capture`, ejecuta desde el raíz `powershell -ExecutionPolicy Bypass -File .\\PROBAR_DIRECT_COMPOSICION_WINDOWS.ps1`. Deben aparecer banner y lower-third al mismo tiempo.
+5. Presiona ENTER en el test y observa que ambas gráficas regresan al estado original. Verifica que detener/reiniciar sigue funcionando.
+
+**No integrar ni fusionar hasta lograr paridad real en En Vivo + Preview/Program y test de emisión**.
