@@ -9,6 +9,7 @@ Corrección de ciclo de vida:
   de un cierre incompleto.
 """
 import argparse
+import os
 import sys
 import threading
 import time
@@ -17,6 +18,7 @@ import cv2
 import numpy as np
 import pyvirtualcam
 from playwright.sync_api import sync_playwright
+from direct_monitor import ProgramMonitor
 
 W, H, FPS = 1280, 720, 30
 RENDER_W, RENDER_H = 1920, 1080
@@ -207,6 +209,19 @@ def main():
     )
     worker.start()
     cap = None
+    monitor = None
+    monitor_token = os.environ.get("STDQ_DIRECT_MONITOR_TOKEN", "")
+    if monitor_token:
+        monitor = ProgramMonitor(
+            token=monitor_token,
+            port=int(os.environ.get("STDQ_DIRECT_MONITOR_PORT", "31311")),
+        )
+        try:
+            monitor.start()
+        except Exception as exc:
+            monitor = None
+            print("Aviso: monitor de Program no disponible:", exc, flush=True)
+
 
     try:
         if args.camera >= 0:
@@ -285,8 +300,21 @@ def main():
                     ).astype(np.uint8)
 
                 cam.send(rgb)
-                cam.sleep_until_next_frame()
                 counter += 1
+
+                # Every previewed frame was successfully submitted to Unity.
+                # JPEG monitoring is intentionally capped near 7.5fps to avoid
+                # competing with the 30fps broadcast compositor.
+                if monitor is not None and counter % 4 == 0:
+                    reduced = cv2.resize(rgb, (640, 360), interpolation=cv2.INTER_AREA)
+                    ok, jpeg = cv2.imencode(
+                        ".jpg", cv2.cvtColor(reduced, cv2.COLOR_RGB2BGR),
+                        [int(cv2.IMWRITE_JPEG_QUALITY), 70],
+                    )
+                    if ok:
+                        monitor.publish(jpeg.tobytes())
+
+                cam.sleep_until_next_frame()
 
                 now = time.monotonic()
                 if now - last_status >= 10:
@@ -306,6 +334,8 @@ def main():
     finally:
         # La camara virtual se libera por su context manager antes de entrar aqui.
         stop.set()
+        if monitor is not None:
+            monitor.close()
         if cap is not None:
             cap.release()
 
