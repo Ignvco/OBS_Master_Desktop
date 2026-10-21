@@ -1,0 +1,73 @@
+# OBS MASTER RC5R — recortes HTML inteligentes con Playwright (EXPERIMENTAL)
+
+## Antecedentes verificables
+
+RC5M, confirmado por el usuario Windows 10: **Unity 1280×720 ~29,8 FPS y Preview/Program internos ~15 FPS** gracias a MJPG-last, composición OpenCV optimizada, trabajadores JPEG asíncronos y reloj phase-locked. La mejora visual de los monitores fue confirmada.
+
+RC5H (Playwright PNG de 1280×720 con CSS viewport 1920×1080): capturas HTML ~3,8–5,7 FPS; cinta móvil aún se percibe entrecortada.
+
+RC5C (CDP con clip): ***NO aprobado***. Registro integrado: **Unity 24,0 → 23,3 → 20,2 FPS**, mientras `STDQ_HTML` cae de 6,1 a 4,5 FPS. CDP consume demasiado en esta PC y no soluciona la cinta; PR #6 permanece sin merge.
+
+## Estrategia RC5R
+
+Sin alterar cámara, Unity, Take/Cut, estado publicado ni Content Studio, se explora **Playwright screenshot parcial** como alternativa. El navegador sigue renderizando el escenario CSS editorial de 1920×1080 (DPR=2/3) y PNG alfa de 1280×720, pero si las gráficas ocupan una región localizada captura sólo ese rectángulo, lo sitúa sobre un lienzo transparente completo y entrega a `compile_overlay` exactamente el mismo tipo de RGBA utilizado en RC5M/RC5H.
+
+`desktop-app/lab/direct_html_roi.py`:
+- Calcula en el navegador un recuadro que contiene `getBoundingClientRect` de **todas las gráficas actuales y descendientes**, incluyendo transformaciones Motion, máscaras y textos. Este muestreo no altera su DOM, animaciones o z-order.
+- Conserva margen de seguridad **144 px CSS** para sombras y movimientos, redondea hacia fuera a múltiplos de 3 CSS (cada 3 CSS equivale exactamente a 2 píxeles en DPR 2/3), limita el clip a los 1920×1080 del stage.
+- Si el área recortada ocupa **≥72 % del escenario**, si la geometría es dudosa, hay demasiados elementos o el recorte es inválido: **captura el fotograma completo**. No se pierde contenido deliberadamente por intentar recortar un fullscreen.
+- Si no hay ninguna gráfica representada: acepta fotograma transparente sin screenshot, preservando los marcadores de Preview/Take.
+- Python recompone las coordenadas en el lienzo de 1280×720 RGBA. Si Playwright retorna un clip incompatible, **reintenta el screenshot completo** para proteger el aire (sin cambiar la salida MJPG).
+
+`direct_graphics.py` mantiene el mismo protocolo de `data-direct-preview-revision` y `data-direct-take-id` antes/después, de modo que una captura iniciada con una revisión no puede aceptarse bajo otra. La activación requiere explícitamente **`STDQ_DIRECT_HTML_ROI=1` y `STDQ_DIRECT_HTML_CAPTURE=720`**. Por defecto todo sigue usando el comportamiento probado de RC5H. No se toca ningún archivo de diseño React.
+
+**Limitación:** Motion y CSS pueden mover contenido durante los ~100ms que tarde el screenshot. El margen grande reduce riesgo de recorte pero no asegura equivalencia 1:1 de todos los efectos (glows extremos, desplazamientos muy rápidos). Las pruebas con tus gráficas reales y la opción de rollback son imprescindibles. Las capturas PNG de pantalla completa aún se usarán para composiciones grandes. No prometer 15 FPS HTML antes del ensayo real.
+
+## Fase 1: ejecutar únicamente benchmark offline en Windows
+
+No requiere Unity, webcam, OBS MASTER ni StreamYard. Clonar una carpeta separada, sin tocar RC5M:
+
+```bat
+cd /d "%USERPROFILE%\Desktop"
+git clone --branch v5-html-roi --single-branch https://github.com/Ignvco/OBS_Master_Desktop.git OBS-Master-v5-html-roi
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-html-roi"
+DIAGNOSTICO_RC5R_HTML_REGION_WINDOWS.bat
+```
+
+- El BAT comprueba sintaxis, geometría y ejecuta Edge real con cinta CSS, texto blanco editorial, gradiente, máscara translúcida y fondo transparente.
+- La prueba compara en **píxeles** PNG completo y PNG reconstruido desde recorte sobre el mismo escenario estático. Límite de tolerancia: 2 niveles RGB/alpha máximo; alpha fuera debe ser cero; alpha semitransparente conservado.
+- Rehabilita movimiento del ticker y mide 10 screenshots completos vs 10 screenshots ROI en el mismo navegador, asegurando posiciones distintas. Muestra:
+  ```text
+  RC5R_BENCH full_mean=...ms roi_mean=...ms clip=... CSS ticker_changes=...
+  Ran 3 tests ... OK
+  ```
+- La medida **no es un FPS de emisión**; sólo determina si vale la pena abrir la app en modo ROI. En caso de FAIL, no iniciar versión experimental, compartir el error.
+
+## Fase 2: ensayo opcional dentro de OBS MASTER (SOLO tras pasar pruebas)
+
+**Antes**: detener Unity Camera, cerrar OBS MASTER completamente desde bandeja y respaldar `%APPDATA%\STDQ OBS Master V5 Native Dev\.stdq-runtime` (todos los clones V5 comparten ese perfil).
+
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-html-roi"
+INICIAR_RC5_HTML_REGION_WINDOWS.bat
+```
+
+El BAT vuelve a probar PNG con Edge antes de abrir Electron y activa 720p ROI experimental. Probar fuera de emisión pública.
+
+Medir al menos cinco ventanas `Salida`, `STDQ_MONITOR`, `STDQ_HTML`, `STDQ_PERF`. La nueva línea `STDQ_HTML program=Nfps preview=Nfps ROI=X%/Y%` refleja FPS nuevas imágenes HTML y la proporción del área que la captura está rasterizando. Conservar:
+- Unity ~29–30 FPS, no caídas sostenidas a 25 o menos.
+- Monitores ~15 FPS sin `dropped` ni `errors`.
+- Mayor frecuencia HTML en cinta animada real y percepción visual mejorada.
+- Comparación de etiquetas, máscaras, sombras, capas, semitransparencias y esquinas durante animaciones de entrada/salida.
+- 2 TAKE/CUT nuevos, sin filtrar Preview a Program, con ACK y comprobación StreamYard.
+- Si cumple: 30 min, reinicios limpios y test repetible. Si no: abortar e iniciar el clon RC5M previamente validado.
+
+## No tocar versión estable
+
+Rollback:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-monitor-async"
+INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
+```
+
+**PR draft** de RC5R hacia `v5-html-motion`; no merge a `v5-monitor-async`, `v5-native` ni `main` sin calidad y mediciones comprobadas en Windows.
