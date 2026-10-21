@@ -134,3 +134,22 @@ test('native Direct status uses the real supervisor, not a simulated camera flag
     await new Promise<void>(resolve=>nativeServer.close(()=>resolve()));
   }
 });
+
+test('Program video proxy rejects cross-site requests and unavailable native motor',async()=>{
+  const server=createServer(createStationHandler(staticDir,
+    ()=>({state:'stopped',pid:null,error:null,camera:0,url:'http://127.0.0.1:3000/?overlay=direct-program'}),
+    ()=>({token:'test-only-token',port:31311})));
+  await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const addr=server.address();
+  const host=`http://127.0.0.1:${typeof addr==='object'&&addr?addr.port:0}`;
+  try {
+    const forbidden=await fetch(host+'/api/direct/program.mjpg',{headers:{'Sec-Fetch-Site':'cross-site'}});
+    assert.equal(forbidden.status,403);
+    const sameSite=await fetch(host+'/api/direct/program.mjpg',{headers:{'Sec-Fetch-Site':'same-origin'}});
+    assert.equal(sameSite.status,503);
+    const method=await fetch(host+'/api/direct/program.mjpg',{method:'POST',headers:{'Sec-Fetch-Site':'same-origin'}});
+    assert.equal(method.status,405);
+  } finally {
+    await new Promise<void>(resolve=>server.close(()=>resolve()));
+  }
+});
