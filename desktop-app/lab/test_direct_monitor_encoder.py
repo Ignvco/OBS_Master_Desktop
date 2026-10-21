@@ -5,6 +5,7 @@ network, OBS Master or Unity Capture device is necessary.
 """
 import threading
 import time
+import math
 import unittest
 
 import cv2
@@ -116,6 +117,33 @@ class AsyncMonitorTests(unittest.TestCase):
             release.set()
             channel.close()
         self.assertFalse(channel.thread.is_alive())
+
+    def test_phase_locked_scheduler_preserves_15fps_under_30hz_jitter(self):
+        """Previously this aliasing produced ~11.6fps with zero drops."""
+        channel = _LatestFrameChannel(
+            "timing", None, lambda _: None, fps=15, jpeg_quality=70,
+            size=(64, 36), stop_event=threading.Event(),
+        )
+        # Deterministic timestamps, no live thread or camera required.
+        frame = np.zeros((8, 8, 3), np.uint8)
+        for i in range(600):
+            timestamp = 100.0 + i / 30.0 + math.sin(i * 0.77) * 0.002
+            channel.offer(frame, timestamp=timestamp)
+        self.assertGreaterEqual(channel.offered, 295)
+        self.assertLessEqual(channel.offered, 301)
+        self.assertEqual(channel.errors, 0)
+
+    def test_phase_locked_scheduler_skips_missed_deadlines_after_pause(self):
+        channel = _LatestFrameChannel(
+            "timing", None, lambda _: None, fps=15, jpeg_quality=70,
+            size=(64, 36), stop_event=threading.Event(),
+        )
+        frame = np.zeros((8, 8, 3), np.uint8)
+        self.assertTrue(channel.offer(frame, timestamp=100))
+        self.assertTrue(channel.offer(frame, timestamp=101))
+        self.assertFalse(channel.offer(frame, timestamp=101.001))
+        self.assertTrue(channel.offer(frame, timestamp=101.068))
+        self.assertEqual(channel.offered, 3)
 
     def test_offer_rate_limit_and_stop(self):
         monitor = FakeMonitor()
