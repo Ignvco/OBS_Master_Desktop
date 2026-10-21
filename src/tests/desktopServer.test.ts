@@ -239,7 +239,11 @@ test('RC4B native Take waits for Unity frame ACK before changing Program and blo
     const after=(await (await fetch(base+'/api/station/state')).json()).state;
     const components=Object.fromEntries(Object.entries(after.components as Record<string,any>).map(([id,c])=>
       [id,{...(c as object),visibleInOBS:before.components?.[id]?.visibleInOBS??false}]));
-    const restored=await fetch(base+'/api/station/state',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({components})});
+    const previousCustom=(before.customComponents??{}) as Record<string,any>;
+    const customComponents=Object.fromEntries(Object.entries((after.customComponents??{}) as Record<string,any>).map(([id,c])=>
+      [id,{...(c as object),visibleInOBS:previousCustom[id]?.visibleInOBS??false}]));
+    const restored=await fetch(base+'/api/station/state',{method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({components,customComponents})});
     assert.equal(restored.status,200);
     const preview=(await (await fetch(base+'/api/direct/preview')).json()).preview;
     const reset=await fetch(base+'/api/direct/preview',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({ids:oldPreview.ids,expectedRevision:preview.revision})});
