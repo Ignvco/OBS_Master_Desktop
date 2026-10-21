@@ -86,6 +86,41 @@ html, body {
 """
 
 
+def compile_overlay(rgba):
+    """Crop transparent pixels and premultiply ONCE per HTML screenshot.
+
+    The output loop blends uint8 pixels in OpenCV C++ instead of allocating
+    full-frame float32 arrays at each camera frame.
+    Empty Preview remains a valid captured overlay for Cut-to-webcam.
+    """
+    alpha = rgba[:, :, 3]
+    if cv2.countNonZero(alpha) == 0:
+        return (0, 0, None, None)
+    x, y, width, height = cv2.boundingRect(alpha)
+    a = np.ascontiguousarray(alpha[y:y + height, x:x + width])
+    color = np.ascontiguousarray(rgba[y:y + height, x:x + width, :3])
+    alpha3 = cv2.cvtColor(a, cv2.COLOR_GRAY2RGB)
+    premultiplied = cv2.multiply(color, alpha3, scale=1.0 / 255.0)
+    inverse = cv2.cvtColor(cv2.subtract(255, a), cv2.COLOR_GRAY2RGB)
+    return (x, y, premultiplied, inverse)
+
+
+def blend_overlay_inplace(frame, overlay):
+    if overlay is None:
+        return frame
+    x, y, foreground, inverse = overlay
+    if foreground is None:
+        return frame
+    height, width = foreground.shape[:2]
+    region = frame[y:y + height, x:x + width]
+    blended = cv2.add(
+        cv2.multiply(region, inverse, scale=1.0 / 255.0),
+        foreground,
+    )
+    region[:] = blended
+    return frame
+
+
 def render_overlay(url, channel="program"):
     """Each channel owns its Playwright lifecycle; Preview never overwrites Program."""
     slot = "overlay" if channel == "program" else "preview_overlay"
@@ -151,12 +186,10 @@ def render_overlay(url, channel="program"):
                             img = cv2.resize(img, (W, H))
 
                         rgba = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
-                        alpha = rgba[:, :, 3:4].astype(np.float32) / 255.0
-                        foreground = rgba[:, :, :3].astype(np.float32) * alpha
-                        inverse = 1.0 - alpha
+                        optimized = compile_overlay(rgba)
 
                         with lock:
-                            state[slot] = (foreground, inverse)
+                            state[slot] = optimized
                             if channel == "program":
                                 state["captures"] += 1
                             state[error_slot] = None
@@ -343,7 +376,9 @@ def main():
 
                 stat_ms["camera"] += (time.perf_counter()-t_camera)*1000.0
                 t_blend = time.perf_counter()
-                base_rgb = rgb
+                # Keep a separate uncomposited physical frame ONLY when the
+                # Preview JPEG monitor needs it (once per 8 broadcast frames).
+                base_rgb = rgb.copy() if monitor is not None and (counter + 1) % 8 == 0 else None
                 with lock:
                     overlay = state["overlay"]
                     preview_overlay = state["preview_overlay"]
@@ -385,12 +420,7 @@ def main():
                     override_take_id = None
 
                 applied_overlay = active_override if active_override is not None else overlay
-                if applied_overlay is not None:
-                    fg, inverse = applied_overlay
-                    rgb = np.clip(
-                        rgb.astype(np.float32) * inverse + fg,
-                        0, 255,
-                    ).astype(np.uint8)
+                blend_overlay_inplace(rgb, applied_overlay)
 
                 stat_ms["blend"] += (time.perf_counter()-t_blend)*1000.0
                 t_send = time.perf_counter()
@@ -419,15 +449,8 @@ def main():
 
                 # Independently composited Preview: same physical input frame,
                 # different HTML overlay. NEVER send Preview to Unity Capture.
-                if monitor is not None and counter % 8 == 0:
-                    if preview_overlay is not None:
-                        p_fg, p_inverse = preview_overlay
-                        preview_rgb = np.clip(
-                            base_rgb.astype(np.float32) * p_inverse + p_fg,
-                            0, 255,
-                        ).astype(np.uint8)
-                    else:
-                        preview_rgb = base_rgb
+                if monitor is not None and counter % 8 == 0 and base_rgb is not None:
+                    preview_rgb = blend_overlay_inplace(base_rgb, preview_overlay)
                     small = cv2.resize(preview_rgb, (640, 360), interpolation=cv2.INTER_AREA)
                     ok, jpeg = cv2.imencode(
                         ".jpg", cv2.cvtColor(small, cv2.COLOR_RGB2BGR),
