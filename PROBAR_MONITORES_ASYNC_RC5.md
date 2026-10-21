@@ -93,3 +93,7 @@ El usuario ejecutó la versión corregida tras `git pull v5-monitor-async`. Se r
 3. Mínimo 30 minutos de operación y múltiples reinicios de la cámara sin pérdida acumulada ni procesos de Edge huérfanos.
 4. Después, analizar independientemente el cuello de botella de screenshots animados Playwright; no aumentar en bloque la tasa de captura sin medir consumo CPU/GPU ni sacrificar fidelidad de Content Studio.
 5. **No fusionar a `v5-perf`, `v5-native` ni `main`** hasta terminar las pruebas. Mantener rollback a `INICIAR_RC5_HD_MJPG_WINDOWS.bat` en el clon `OBS-Master-v5-perf`.
+
+## Confirmación visual del usuario — 21-oct-2026
+
+Tras ejecutar RC5M con el arreglo de cadencia, el usuario confirmó: **«Sí, ahora es más fluido»** al observar Preview y Program internos. Se suma a las mediciones sostenidas cercanas a 15 FPS por monitor y ~29,8 FPS de Unity Camera. Esto valida una **mejora visual percibida de los monitores**, no representa aprobación final para producción. Permanecen por comprobar en esta misma compilación al menos dos Take/Cut aislados, estabilidad prolongada y cierre/reinicio limpio; tampoco debe inferirse que las animaciones HTML (capturas Playwright) ya tengan fluidez de 15 FPS.
