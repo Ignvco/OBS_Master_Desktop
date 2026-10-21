@@ -146,3 +146,18 @@ Cámara física → **Capture Service** → **Scene Compositor** (Preview indepe
 5. Presiona ENTER en el test y observa que ambas gráficas regresan al estado original. Verifica que detener/reiniciar sigue funcionando.
 
 **No integrar ni fusionar hasta lograr paridad real en En Vivo + Preview/Program y test de emisión**.
+
+
+## Implementación incremental — Program real dentro de En Vivo (RC3)
+
+- `desktop-app/lab/direct_monitor.py`: emite fotogramas JPEG reales de Program por HTTP loopback tokenizado. Monitor aproximado 640×360 / hasta ~7.5 FPS, independiente de la salida configurada a 1280×720 / 30 FPS.
+- `desktop-app/lab/direct_graphics.py`: publica para monitor cada cuarto fotograma después de `cam.send()`. Sigue usando Unity Capture y Playwright corregidos. Python conserva el apagado cooperativo.
+- `desktop-app/direct-process.cjs`: genera token aleatorio en cada inicio y lo transmite solamente al proceso hijo.
+- `desktop-app/server.ts`: proxy `GET /api/direct/program.mjpg`, comprobación de host/origen same-origin, entrega JPEG multipart mediante monitor de proceso activo. No confundirlo con confirmación de recepción en StreamYard.
+- `desktop-app/main.cjs`: vincula el proxy al supervisor.
+- `src/App.tsx`: consulta `/api/direct/status` cada 2 segundos, usando solo el resultado del supervisor.
+- `src/components/spaces/BroadcastControlSpace.tsx`: el monitor **Program original** muestra video real, con fallback y reintento; el monitor Preview conserva la caja original y advierte que aún está pendiente.
+- `src/tests/desktopServer.test.ts`: pruebas de accesos cross-site y estado no disponible.
+- `PROBAR_MONITOR_PROGRAM_RC3.md`: guía de validación Windows; no compilar directamente sobre la instalación 4.2.
+
+**Pendiente y bloqueo:** todavía no se implementaron monitores independientes Preview/Program ni acción `take` sobre snapshots de escenas; se mantuvo el Panel En Vivo, pero algunas funciones siguen requiriendo OBS WebSocket. Este RC3 es solo un hito de monitoreo, **no la migración completa**. Confirmación real de visualización y rendimiento requerida en Windows.
