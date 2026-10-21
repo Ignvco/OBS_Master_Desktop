@@ -161,3 +161,19 @@ Cámara física → **Capture Service** → **Scene Compositor** (Preview indepe
 - `PROBAR_MONITOR_PROGRAM_RC3.md`: guía de validación Windows; no compilar directamente sobre la instalación 4.2.
 
 **Pendiente y bloqueo:** todavía no se implementaron monitores independientes Preview/Program ni acción `take` sobre snapshots de escenas; se mantuvo el Panel En Vivo, pero algunas funciones siguen requiriendo OBS WebSocket. Este RC3 es solo un hito de monitoreo, **no la migración completa**. Confirmación real de visualización y rendimiento requerida en Windows.
+
+## Implementación incremental — RC4B Take/Cut nativo (2026-10-21)
+
+**Alcance: código implementado, NO probado todavía en Windows.** El usuario validó RC4A con Preview independiente y Program/StreamYard inalterados.
+
+- El Panel En Vivo original ahora envía **Cut** desde el botón de transición existente, sin nueva vista.
+- `/api/direct/take`: mismo origen, acepta solo Cut, revision optimista, exige motor Unity en `running`.
+- `stationBridge.ts`: mutex de transición y commit único de flags de Program **después de ACK de motor**, sin alterar borradores/versiones. La selección de Preview sigue aislada.
+- `direct_graphics.py`: toma un screenshot de Preview verificado mediante marcador antes/después; lo aplica solo al hilo de video Unity y emite `STDQ_TAKE_ACK` **después de `cam.send()`**. En errores admite `ROLLBACK`. La superposición temporal permanece hasta que el renderizador Program capturó el ID confirmado.
+- `direct-process.cjs`: vincula comandos stdin TAKE/ROLLBACK con ACK de fotograma por stdout, maneja timeouts y cierre del proceso.
+- `DirectCompositeRenderer`: publica marcadores de revisión Preview y de Take committed desde SSE.
+- `src/tests/desktopServer.test.ts`: rechazo por origen ajeno, no modificar Program antes de ACK, exclusividad durante Take, publicación después de ACK, rollback por fallo.
+- `INICIAR_RC4A_VERIFICADO_WINDOWS.bat`: suma `py_compile` y marcador de JS RC4B.
+- Ver ensayo reproducible en `PROBAR_TAKE_NATIVO_RC4B.md`.
+
+**Riesgos/pendientes:** Un ACK de `cam.send()` no confirma entrega a StreamYard. Una reversión solicitada después de un primer frame no puede borrar ese frame ya emitido. Se debe probar latencia, estado coherente después del Cut, rendimiento, 20 ciclos y fallos de engine. Transiciones animadas, acciones Program no ligadas a OBS, escenas propias, Configuración y empaquetado autónomo todavía pendientes. **No fusionar en main ni emitir públicamente con RC4B no validado**.
