@@ -28,7 +28,8 @@ lock = threading.Lock()
 stop = threading.Event()
 state = {"overlay": None, "preview_overlay": None, "preview_revision": -1,
          "program_rendered_take_id": "", "error": None, "preview_error": None,
-         "captures": 0, "renderer_done": False}
+         "captures": 0, "renderer_done": False,
+         "render_program_ms": 0.0, "render_preview_ms": 0.0}
 control_queue = queue.Queue()
 
 DEMO = """
@@ -159,6 +160,7 @@ def render_overlay(url, channel="program"):
                             if channel == "program":
                                 state["captures"] += 1
                             state[error_slot] = None
+                            state["render_preview_ms" if channel == "preview" else "render_program_ms"] = (time.perf_counter()-started)*1000.0
                             if channel == "preview":
                                 state["preview_revision"] = int(after) if after and after.isdigit() else -1
                             else:
@@ -255,7 +257,8 @@ def main():
     cap = None
     monitor = None
     monitor_token = os.environ.get("STDQ_DIRECT_MONITOR_TOKEN", "")
-    if monitor_token:
+    monitor_enabled = os.environ.get("STDQ_DIRECT_MONITORS", "1") != "0"
+    if monitor_token and monitor_enabled:
         monitor = ProgramMonitor(
             token=monitor_token,
             port=int(os.environ.get("STDQ_DIRECT_MONITOR_PORT", "31311")),
@@ -316,12 +319,15 @@ def main():
             counter = 0
             last_status = time.monotonic()
             last_counter = 0
+            stat_ms = {"camera":0.0,"blend":0.0,"send":0.0,"monitors":0.0,"sleep":0.0}
+            stat_frames = 0
             active_override = None
             override_take_id = None
             pending_take_ack = None
             pending_rollback_ack = None
 
             while not stop.is_set():
+                t_camera = time.perf_counter()
                 if cap is not None:
                     ok, bgr = cap.read()
                 else:
@@ -335,6 +341,8 @@ def main():
                     rgb = np.empty((H, W, 3), dtype=np.uint8)
                     rgb[:] = (19, 22, 30)
 
+                stat_ms["camera"] += (time.perf_counter()-t_camera)*1000.0
+                t_blend = time.perf_counter()
                 base_rgb = rgb
                 with lock:
                     overlay = state["overlay"]
@@ -343,6 +351,8 @@ def main():
                     browser_take_id = state["program_rendered_take_id"]
                     captures = state["captures"]
                     error = state["error"]
+                    render_program_ms = state["render_program_ms"]
+                    render_preview_ms = state["render_preview_ms"]
 
                 # Control commands are consumed ONLY in the single camera
                 # output thread. This keeps output switching frame-aligned.
@@ -382,7 +392,10 @@ def main():
                         0, 255,
                     ).astype(np.uint8)
 
+                stat_ms["blend"] += (time.perf_counter()-t_blend)*1000.0
+                t_send = time.perf_counter()
                 cam.send(rgb)
+                stat_ms["send"] += (time.perf_counter()-t_send)*1000.0
                 counter += 1
                 if pending_take_ack is not None:
                     print("STDQ_TAKE_ACK", pending_take_ack, counter, flush=True)
@@ -391,6 +404,7 @@ def main():
                     print("STDQ_ROLLBACK_ACK", pending_rollback_ack, counter, flush=True)
                     pending_rollback_ack = None
 
+                t_monitors = time.perf_counter()
                 # Every previewed frame was successfully submitted to Unity.
                 # JPEG monitoring is intentionally capped near 7.5fps to avoid
                 # competing with the 30fps broadcast compositor.
@@ -422,7 +436,11 @@ def main():
                     if ok:
                         monitor.publish_preview(jpeg.tobytes())
 
+                stat_ms["monitors"] += (time.perf_counter()-t_monitors)*1000.0
+                t_sleep = time.perf_counter()
                 cam.sleep_until_next_frame()
+                stat_ms["sleep"] += (time.perf_counter()-t_sleep)*1000.0
+                stat_frames += 1
 
                 now = time.monotonic()
                 if now - last_status >= 10:
@@ -434,6 +452,18 @@ def main():
                     )
                     if error:
                         print("Aviso HTML:", error, flush=True)
+                    if stat_frames:
+                        print(
+                            "STDQ_PERF "
+                            + " ".join(f"{key}={value/stat_frames:.2f}ms" for key,value in stat_ms.items())
+                            + f" html_program={render_program_ms:.1f}ms"
+                            + f" html_preview={render_preview_ms:.1f}ms"
+                            + f" frames={stat_frames}",
+                            flush=True,
+                        )
+                    for key in stat_ms:
+                        stat_ms[key] = 0.0
+                    stat_frames = 0
                     last_counter = counter
                     last_status = now
 
