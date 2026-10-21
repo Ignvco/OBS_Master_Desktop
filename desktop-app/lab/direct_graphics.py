@@ -468,6 +468,8 @@ def main():
             counter = 0
             last_status = time.monotonic()
             last_counter = 0
+            last_capture_count = 0
+            last_preview_capture_count = 0
             stat_ms = {"camera":0.0,"read":0.0,"convert":0.0,"blend":0.0,"send":0.0,"monitors":0.0,"sleep":0.0}
             stat_frames = 0
             active_override = None
@@ -582,6 +584,15 @@ def main():
                     )
                     if error:
                         print("Aviso HTML:", error, flush=True)
+                    elapsed_interval = max(0.001, now - last_status)
+                    print(
+                        f"STDQ_HTML program={(captures-last_capture_count)/elapsed_interval:.1f}fps "
+                        f"preview={(captures_preview-last_preview_capture_count)/elapsed_interval:.1f}fps "
+                        f"| motor={os.environ.get('STDQ_DIRECT_HTML_ENGINE', 'playwright')}",
+                        flush=True,
+                    )
+                    last_capture_count = captures
+                    last_preview_capture_count = captures_preview
                     if monitor_encoder is not None:
                         print(monitor_encoder.report(), flush=True)
                     if stat_frames:
