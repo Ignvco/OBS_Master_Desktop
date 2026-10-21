@@ -121,6 +121,24 @@ def blend_overlay_inplace(frame, overlay):
     return frame
 
 
+def configure_capture(cap, width, height, fps, requested_codec=""):
+    """Request MJPEG LAST. Do not reconfigure width or FPS afterwards.
+
+    Windows DSHOW may reset the selected media subtype when dimensions change.
+    Keeping this order is required by RC5's validated webcam benchmark.
+    """
+    codec = requested_codec.strip().upper()
+    if codec and codec not in ("MJPG", "YUY2"):
+        raise ValueError("STDQ_DIRECT_CAMERA_FOURCC accepts only MJPG or YUY2")
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    cap.set(cv2.CAP_PROP_FPS, fps)
+    if not codec:
+        return None
+    accepted = cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*codec))
+    return accepted
+
+
 def render_overlay(url, channel="program"):
     """Each channel owns its Playwright lifecycle; Preview never overwrites Program."""
     slot = "overlay" if channel == "program" else "preview_overlay"
@@ -310,18 +328,8 @@ def main():
                 # Opt-in only. Default settings are exactly those validated in
                 # RC4B. Test MJPG only after the standalone camera benchmark.
                 requested_codec = os.environ.get("STDQ_DIRECT_CAMERA_FOURCC", "").strip().upper()
-                if requested_codec and requested_codec not in ("MJPG", "YUY2"):
-                    raise ValueError("STDQ_DIRECT_CAMERA_FOURCC accepts only MJPG or YUY2")
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
-                cap.set(cv2.CAP_PROP_FPS, FPS)
+                accepted = configure_capture(cap, W, H, FPS, requested_codec)
                 if requested_codec:
-                    # On some DirectShow drivers changing width or FPS
-                    # renegotiates the media subtype: request codec LAST.
-                    accepted = cap.set(
-                        cv2.CAP_PROP_FOURCC,
-                        cv2.VideoWriter_fourcc(*requested_codec),
-                    )
                     print("Formato solicitado al final:", requested_codec,
                           "| set FourCC:", accepted, flush=True)
                 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -330,6 +338,9 @@ def main():
                 fourcc_raw = int(cap.get(cv2.CAP_PROP_FOURCC) or 0)
                 fourcc = "".join(chr((fourcc_raw >> (8 * i)) & 255) for i in range(4))
                 readable_fourcc = fourcc if all(32 <= ord(letter) < 127 for letter in fourcc) else f"unknown 0x{fourcc_raw & 0xffffffff:08X}"
+                if requested_codec and fourcc != requested_codec:
+                    print("ADVERTENCIA: el controlador NO confirmó", requested_codec,
+                          "| subtipo devuelto:", readable_fourcc, flush=True)
                 print("Camara fisica abierta:", args.camera, flush=True)
                 print(
                     f"Entrada reportada: {width:.0f}x{height:.0f} / "
