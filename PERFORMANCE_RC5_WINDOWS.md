@@ -200,3 +200,37 @@ Segundo benchmark aislado ejecutado en Windows, con la misma webcam 0:
 9. Ante regresión, salir completamente de Electron, detener Unity Camera y abrir el proyecto anterior `OBS-Master-v5-native`. No mezclar bases de builds ni alterar `main`.
 
 Se añadió `configure_capture()` con orden fijo width→height→FPS→FOURCC y tests que lo validan, además de una advertencia cuando la webcam no confirma MJPG. **Aún no validado el rendimiento del motor completo con este formato en Windows.**
+
+## RC5 HD — Primer ensayo integrado con Unity (21-oct-2026)
+
+**Evidencia de usuario:** arranque con `INICIAR_RC5_HD_MJPG_WINDOWS.bat`; el motor confirma:
+```text
+Formato solicitado al final: MJPG | set FourCC: True
+Camara fisica abierta: 0
+Entrada reportada: 1280x720 / 30.0 FPS configurados / FourCC MJPG
+SALIDA ACTIVA: Unity Video Capture
+```
+
+**13 ventanas sucesivas de 10 s** en el compositor completo, monitores internos activos, dos páginas Playwright y un Take:
+
+```text
+28.6 29.0 30.2 29.6 29.9 29.9 29.4 29.0 30.0 29.6 28.0 27.0 29.7
+```
+
+Promedio no ponderado de las ventanas: **29,22 FPS**; mínimo 27,0, máximo 30,2. Es aproximadamente **3,08×** el promedio ~9,5 FPS observado con DirectShow sin formato MJPG confirmado. No se cambió la resolución final de salida ni la tipografía/gráficos. El evento `STDQ_TAKE_ACK 7dd189fc0fcb7c2327122ce9c2c4c49b 2611` confirma que el motor tomó y envió al menos un fotograma de la composición preparada; **no constituye validación de StreamYard extremo a extremo**.
+
+Rangos observados de telemetría:
+- `camera` ~10,5–23,2 ms por frame; `read` ~8,1–21,6 ms; `convert` ~1,5–2,7 ms. Gran descenso respecto de los ~80–95 ms previos.
+- `blend` ~6,2–9,1 ms; `send` 0,1 ms inicialmente, sube a ~6–10 ms al final; `monitors` ~4,4–6,2 ms; `sleep` generalmente cercano a 0 ms.
+- `html_program` ~194–404 ms por captura; `html_preview` ~243–392 ms. `Capturas HTML` sube solo ~28–41 veces por cada 10 s, es decir unas **3–4 capturas HTML por segundo**, aunque la webcam/video de salida esté cerca de 30 FPS.
+- **Interpretación:** la fluidez de la cámara se recuperó; **animaciones/gestos gráficos rasterizados a través de las capturas PNG de Playwright pueden seguir viéndose entrecortados**. No atribuir a StreamYard un fallo aún no reportado. Los monitores MJPEG internos también tienen una cadencia limitada a ~7,5 FPS (Program) y ~3,75 FPS (Preview), distinta de la salida real Unity.
+
+### Criterios pendientes antes de promover RC5 a `v5-native`
+
+1. Usuario confirme que la señal de **StreamYard** (no solo el monitor HTML dentro de OBS MASTER) muestra cámara fluida, sin problemas de sincronía/artefactos después de Take.
+2. Realizar prueba de estabilidad >=30 min, con 5–10 Cut de diferentes gráficas y comprobar que Preview permanece aislado antes de cada uno, así como ausencia de fallo/caída de frames persistente.
+3. Probar cerrar/reabrir Electron/Unity Camera y recuperar estado; confirmar cierre limpio sin procesos Edge/Playwright huérfanos.
+4. Identificar diferencia entre fluidez de webcam vs Motion HTML. Antes de optimizar animation capture, perfilar screenshot PNG y la frecuencia real, preservando máscaras, capas, Alpha y animaciones del Content Studio.
+5. Mantener posibilidad de volver al motor `v5-native`; no merge automático por buena cifra inicial.
+
+**Estado actual:** RC5 HD es un éxito de rendimiento medido en motor Unity 720p, **aprobación funcional final aún pendiente**.
