@@ -150,8 +150,12 @@ else {
       });
       // Read native compiled JS, never Vite or TypeScript source at runtime.
       const {startStationServer} = await import('./compiled/desktop-app/server.js');
-      httpServers = await startStationServer({port: PORT, staticDir: path.join(__dirname,'dist')});
       createDirectSupervisor();
+      httpServers = await startStationServer({
+        port: PORT,
+        staticDir: path.join(__dirname,'dist'),
+        directStatus: () => direct.status(),
+      });
       createWindow();
       createTray();
     } catch (error) {
