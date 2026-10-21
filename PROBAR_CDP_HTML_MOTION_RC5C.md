@@ -82,3 +82,20 @@ INICIAR_RC5_CDP_MOTION_WINDOWS.bat
 ```
 
 Aportar `RC5C_BENCH` para Playwright y CDP si pasan; si vuelve a fallar **no intentar iniciar el motor** y copiar el error. El test y el iniciador bloquean el uso de CDP ante fallo. Una comparación con CDP más lento o sin ventaja sustancial no justifica integrarlo: mantener RC5M y evaluar otro pipeline de animación.
+
+## Resultado final de prueba integrada CDP — rechazo de rendimiento
+
+El usuario ejecutó el experimento con el arreglo de clip CDP y el motor inició Unity. En tres intervalos de 10 segundos:
+- **Unity**: 24,0 → 23,3 → **20,2 FPS** (regresión severa respecto de ~29,8 FPS con RC5M).
+- **Animaciones HTML Program/Preview**: 6,1/6,0 → 4,7/4,7 → **4,5/4,5 FPS**, insuficiente para la cinta fluida.
+- Monitores internos: tras calentamiento ~14,8–14,9 FPS, `errors=0` y `dropped=0`.
+- `blend` aumentó de 14,23 a 20,16 ms; `send` 10,52–13,10 ms; `camera` 13,18–16,17 ms.
+- `screenshot_program` 100,5 / 128,4 / 82,9 ms; `html_program` total 224,9 / 263,0 / 178,4 ms.
+
+**Decisión:** CDP correctamente escalado NO aporta mejora suficiente en animación y reduce la cadencia de Unity. **No promover, no fusionar**. La comparación aislada de Edge de 129,6ms fue con Playwright antes de arreglo; no permite deducir una mejora total en condiciones de producción. El próximo experimento, si procede, debe partir de RC5M/RC5H y reducir área rasterizada de Playwright en vez de integrar CDP.
+
+Rollback CMD después de detener completamente OBS MASTER y Unity:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-monitor-async"
+INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
+```
