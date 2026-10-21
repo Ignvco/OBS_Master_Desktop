@@ -72,3 +72,24 @@ INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
 ```
 
 El BAT ejecuta pruebas de temporización y aislamiento antes de compilar y copiar los assets. Comparar al menos 5 líneas `STDQ_MONITOR` y `Salida`. Repetir un Cut para verificar aislamiento Preview→Program y observar StreamYard. Si hay regresiones, volver al clon `OBS-Master-v5-perf` con su BAT MJPG anterior, sin hacer merge.
+
+## RC5M — Resultado confirmado del phase-lock en Windows 10 (21-oct-2026)
+
+El usuario ejecutó la versión corregida tras `git pull v5-monitor-async`. Se recibieron 13 ventanas consecutivas de telemetría en Unity Camera:
+
+- **Salida Unity**: `28.4, 30.1, 30.1, 30.2, 30.1, 30.1, 29.3, 29.0, 30.0, 30.1, 30.1, 30.0, 30.0` FPS. Promedio no ponderado de ventanas **29,81 FPS** (mínimo 28,4, máximo 30,2).
+- **Monitores Program y Preview**: primera ventana durante arranque `10.9fps`; las **12 ventanas restantes muestran 14,9–15,1 FPS en ambos monitores**, sin decrecimiento sostenido.
+- **Workers JPEG**: los contadores acumulados muestran `dropped=0`, `errors=0` para ambos; `encoded` alcanza 1943 (de 1944 ofrecidos), apenas un cuadro pendiente.
+- **Sobrecarga del hilo de Unity para los monitores**: `STDQ_PERF monitors=0.03–0.04ms` por fotograma (medición de encolado, NO de la compresión dentro de los dos workers).
+- **Composición**: `blend` en torno a 6–7,5ms, `send` cercano a 0,11ms y lectura de cámara promedio ~24–27ms en la fase estable.
+- **Rasterización HTML**: `Capturas HTML` pasó de 44 a 498 (unas 30–40 capturas Program cada 10s), y `html_program` y `html_preview` continúan entre cientos de ms por captura. **Esto no impide ya los 15 FPS de monitores, pero las animaciones de las gráficas pueden actualizarse más despacio que el video físico.**
+
+**Resultado técnico medido:** la corrección de temporización permitió alcanzar 15 FPS de JPEG en Preview y Program **sin reducir la frecuencia de salida Unity**. La anomalía de 11 FPS estaba en la actualización del deadline y queda corregida según telemetría Windows. **La validación perceptual final del usuario y la recepción StreamYard tras esta versión siguen pendientes**. Tampoco se ha reportado un Take/Cut nuevo en este registro (no aparece `STDQ_TAKE_ACK`); confirmar que sigue funcionando, no inferirlo de versiones anteriores.
+
+### Próximas puertas de QA
+
+1. Confirmación del usuario: Preview y Program se ven más fluidos, StreamYard continúa fluido y en 16:9 720p sin desajustes.
+2. Dos Take/Cut con diferentes overlays; Preview permanece aislado hasta cada Cut y al-air corresponde a la selección.
+3. Mínimo 30 minutos de operación y múltiples reinicios de la cámara sin pérdida acumulada ni procesos de Edge huérfanos.
+4. Después, analizar independientemente el cuello de botella de screenshots animados Playwright; no aumentar en bloque la tasa de captura sin medir consumo CPU/GPU ni sacrificar fidelidad de Content Studio.
+5. **No fusionar a `v5-perf`, `v5-native` ni `main`** hasta terminar las pruebas. Mantener rollback a `INICIAR_RC5_HD_MJPG_WINDOWS.bat` en el clon `OBS-Master-v5-perf`.
