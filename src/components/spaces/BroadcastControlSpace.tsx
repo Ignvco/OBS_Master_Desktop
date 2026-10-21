@@ -246,7 +246,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                 {obsStatus.currentPreviewScene}
               </div>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Escena en preparación. Representación esquemática (no es imagen real). Al confirmar la transición, OBS cambia su señal Program.
+                {directProgramRunning ? 'Preview nativo pendiente: la señal de Program se mantiene independiente. No se muestran imágenes de ensayo simuladas.' : 'Escena en preparación. Representación esquemática de OBS, no video real.'}
               </p>
             </div>
 
@@ -309,6 +309,11 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                     ? 'No se pudo abrir el monitor de Unity Camera. Confirma la señal en StreamYard.'
                     : 'Monitor de Program no disponible. Inicia Unity Camera desde la bandeja.'}
                 </div>
+                {directProgramRunning && programMonitorError && (
+                  <button type="button" className="text-xs text-rose-200 underline" onClick={()=>setProgramMonitorError(false)}>
+                    Reintentar monitor
+                  </button>
+                )}
               </div>
             )}
 
@@ -325,7 +330,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
             {/* Corner Badge */}
             <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-rose-500/30 text-[10px] text-rose-400 font-mono font-bold">
-              {directProgramRunning && !programMonitorError?'MONITOR REAL · 640×360 / ~7 FPS':'MONITOR NO DISPONIBLE'}
+              {directProgramRunning && !programMonitorError?'MONITOR REAL · 640×360':'MONITOR NO DISPONIBLE'}
             </div>
           </div>
 
