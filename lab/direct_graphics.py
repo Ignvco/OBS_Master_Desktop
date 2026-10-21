@@ -9,6 +9,7 @@ Corrección de ciclo de vida:
   de un cierre incompleto.
 """
 import argparse
+import sys
 import threading
 import time
 
@@ -174,6 +175,17 @@ def render_overlay(url):
             state["renderer_done"] = True
 
 
+def listen_commands():
+    """Control cooperativo desde Electron; no cerrar Playwright desde otro hilo."""
+    try:
+        for line in sys.stdin:
+            if line.strip().upper() == "STOP":
+                stop.set()
+                return
+    except (OSError, ValueError):
+        return
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="")
@@ -183,8 +195,9 @@ def main():
     print("OBS MASTER DIRECT GRAPHICS", flush=True)
     print("Resolucion: 1280x720 / 30 FPS", flush=True)
     print("Renderizador HTML: 1920x1080", flush=True)
-    print("Presiona Ctrl+C para detener.", flush=True)
+    print("Presiona Ctrl+C o envia STOP por stdin para detener.", flush=True)
     print()
+    threading.Thread(target=listen_commands, daemon=True, name="OBS-MASTER-Direct-Control").start()
 
     worker = threading.Thread(
         target=render_overlay,
@@ -221,7 +234,8 @@ def main():
                     "El renderizador HTML finalizo sin producir una imagen. "
                     "Detalle: " + str(error)
                 )
-            time.sleep(0.2)
+            if stop.wait(0.2):
+                return
 
         if not ready:
             raise RuntimeError(
