@@ -130,6 +130,9 @@ class AsyncMonitorEncoder:
             "preview", monitor, monitor.publish_preview, fps, quality, size,
             stop_event, blend=blend,
         )
+        self._last_report_at = time.monotonic()
+        self._last_program_encoded = 0
+        self._last_preview_encoded = 0
 
     def start(self):
         self.program.start()
@@ -146,7 +149,18 @@ class AsyncMonitorEncoder:
             self.preview.offer(base_rgb, preview_overlay, timestamp)
 
     def report(self):
-        return "STDQ_MONITOR " + self.program.stats() + " | " + self.preview.stats()
+        now = time.monotonic()
+        elapsed = max(0.001, now - self._last_report_at)
+        program_delta = self.program.encoded - self._last_program_encoded
+        preview_delta = self.preview.encoded - self._last_preview_encoded
+        self._last_report_at = now
+        self._last_program_encoded = self.program.encoded
+        self._last_preview_encoded = self.preview.encoded
+        return (
+            f"STDQ_MONITOR program={program_delta/elapsed:.1f}fps "
+            f"preview={preview_delta/elapsed:.1f}fps "
+            f"| {self.program.stats()} | {self.preview.stats()}"
+        )
 
     def close(self):
         self.program.close()
