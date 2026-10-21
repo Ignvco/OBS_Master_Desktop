@@ -98,7 +98,7 @@ class HtmlFrameCapture:
     def _png_size(data):
         # PNG IHDR dimensions allow verifying output size without decoding
         # the entire frame twice (the compositor does that once later).
-        if len(data) < 24 or data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+        if len(data) < 24 or data[:8] != b"\x89PNG\r\n\x1a\n":
             raise RuntimeError("CDP no entregó un PNG válido")
         return struct.unpack(">II", data[16:24])
 
