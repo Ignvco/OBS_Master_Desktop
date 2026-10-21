@@ -307,6 +307,18 @@ def main():
         if args.camera >= 0:
             cap = cv2.VideoCapture(args.camera, cv2.CAP_DSHOW)
             if cap.isOpened():
+                # Opt-in only. Default settings are exactly those validated in
+                # RC4B. Test MJPG only after the standalone camera benchmark.
+                requested_codec = os.environ.get("STDQ_DIRECT_CAMERA_FOURCC", "").strip().upper()
+                if requested_codec:
+                    if requested_codec not in ("MJPG", "YUY2"):
+                        raise ValueError("STDQ_DIRECT_CAMERA_FOURCC accepts only MJPG or YUY2")
+                    accepted = cap.set(
+                        cv2.CAP_PROP_FOURCC,
+                        cv2.VideoWriter_fourcc(*requested_codec),
+                    )
+                    print("Formato solicitado:", requested_codec,
+                          "| set FourCC:", accepted, flush=True)
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
                 cap.set(cv2.CAP_PROP_FPS, FPS)
@@ -315,11 +327,12 @@ def main():
                 reported_fps = cap.get(cv2.CAP_PROP_FPS)
                 fourcc_raw = int(cap.get(cv2.CAP_PROP_FOURCC) or 0)
                 fourcc = "".join(chr((fourcc_raw >> (8 * i)) & 255) for i in range(4))
+                readable_fourcc = fourcc if all(32 <= ord(letter) < 127 for letter in fourcc) else f"unknown 0x{fourcc_raw & 0xffffffff:08X}"
                 print("Camara fisica abierta:", args.camera, flush=True)
                 print(
                     f"Entrada reportada: {width:.0f}x{height:.0f} / "
                     f"{reported_fps:.1f} FPS configurados / "
-                    f"FourCC {fourcc!r}; la tasa real se mide abajo",
+                    f"FourCC {readable_fourcc}; la tasa real se mide abajo",
                     flush=True,
                 )
             else:
