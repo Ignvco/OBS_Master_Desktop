@@ -34,3 +34,23 @@ El renderizado de dos navegadores Playwright puede aumentar consumo de CPU/RAM y
 10. Recopilar logs y capturas de pantalla de ambos monitores si falla algo.
 
 **Siguiente hito RC4B:** snapshots persistentes para escenas nativas + `take` atómico con confirmación real y rollback; conectar al controlador del Panel En Vivo y controles de publicación sin OBS WebSocket. No modificar `main` antes de pruebas completas.
+
+
+## RC4A hotfix — Preparación desde En Vivo (2026-10-21)
+
+El primer RC4A inicializaba `direct-preview.json` con `ids:[]`; abrir Electron por sí solo **no** añadía gráficas a Preview. El script PowerShell prepara y deshace selecciones solo mientras está en espera.
+
+Ahora `BroadcastControlSpace.tsx`, **en el mismo panel aprobado**, incluye el botón `Preparar Preview` junto a Editar/Detalles/Motion de cada gráfica publicada. Consulta revisión vigente del servidor y hace POST de la nueva selección. Si existe un conflicto o no hay publicación responde con error visible en la misma sección. El botón `✓ En Preview` retira exclusivamente del ensayo. Los controles OBS todavía no migrados no se habilitan falsamente por haber iniciado Unity Camera.
+
+### Prueba manual sin PowerShell adicional
+
+1. Cerrar Electron y Unity Camera; desde **CMD** en el clon `v5-native` actualizar Git y correr lint/tests/build/desktop:server; si falla algún paso, detener.
+2. Copiar la carpeta `dist` nueva a `desktop-app/dist` y ejecutar `npm start` desde `desktop-app`.
+3. Encender Unity Camera en bandeja; entrar en **En Vivo**.
+4. En tarjetas Banner y Lower Third, pulsar **Preparar Preview**. La etiqueta debe cambiar a **✓ En Preview**.
+5. El monitor verde debe mostrar ambas gráficas; Program/StreamYard no deben cambiar.
+6. Pulsar nuevamente para retirar una sola de Preview; confirmar que desaparece del monitor verde.
+7. Consultar `http://127.0.0.1:3000/api/direct/preview` para ver el array `ids` realmente persistido.
+8. Si `ids` contiene los gráficos pero siguen sin aparecer, revisar el worker Playwright Preview, la captura PNG con alfa y el proxy `/api/direct/preview.mjpg`. No dar el problema por resuelto sin prueba de video real.
+
+El Take nativo y las escenas siguen pendientes; no usar como estación de emisión pública.
