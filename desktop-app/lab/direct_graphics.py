@@ -25,12 +25,43 @@ from direct_monitor_encoder import AsyncMonitorEncoder
 W, H, FPS = 1280, 720, 30
 RENDER_W, RENDER_H = 1920, 1080
 
+
+def html_capture_profile(height, channel):
+    """Isolated opt-in: rasterize native 1920x1080 stage to 1280x720.
+
+    The CSS scale is on the outer Direct compositor only; individual editor
+    components keep their 1920x1080 authored positions and original Motion
+    timing. It is NOT applied to Content Studio or to the user's UI.
+    """
+    if height not in (720, 1080):
+        raise ValueError("STDQ_DIRECT_HTML_CAPTURE must be 720 or 1080")
+    if channel not in ("program", "preview"):
+        raise ValueError("HTML channel must be program or preview")
+    if height == 1080:
+        return {
+            "viewport": (RENDER_W, RENDER_H),
+            "style": None,
+            "interval": 0.1 if channel == "program" else 0.75,
+        }
+    selector = "[data-direct-take-id]" if channel == "program" else "[data-direct-preview-revision]"
+    return {
+        "viewport": (W, H),
+        "style": (
+            f"{selector} {{transform:scale(0.6666666666666666) !important;"
+            "transform-origin:0 0 !important;}}"
+        ),
+        "interval": 0.10 if channel == "program" else 0.125,
+    }
+
+
 lock = threading.Lock()
 stop = threading.Event()
 state = {"overlay": None, "preview_overlay": None, "preview_revision": -1,
          "program_rendered_take_id": "", "error": None, "preview_error": None,
          "captures": 0, "renderer_done": False,
-         "render_program_ms": 0.0, "render_preview_ms": 0.0}
+         "render_program_ms": 0.0, "render_preview_ms": 0.0,
+         "screenshot_program_ms": 0.0, "screenshot_preview_ms": 0.0,
+         "captures_preview": 0}
 control_queue = queue.Queue()
 
 DEMO = """
@@ -144,6 +175,14 @@ def render_overlay(url, channel="program"):
     """Each channel owns its Playwright lifecycle; Preview never overwrites Program."""
     slot = "overlay" if channel == "program" else "preview_overlay"
     error_slot = "error" if channel == "program" else "preview_error"
+    height = int(os.environ.get("STDQ_DIRECT_HTML_CAPTURE", "1080"))
+    profile = html_capture_profile(height, channel)
+    print(
+        f"HTML {channel}: viewport={profile['viewport'][0]}x{profile['viewport'][1]} "
+        f"intervalo={profile['interval'] * 1000:.0f}ms "
+        f"modo={'rasterizado 720p' if height == 720 else 'original 1080p'}",
+        flush=True,
+    )
     try:
         with sync_playwright() as playwright:
             browser = None
@@ -154,7 +193,8 @@ def render_overlay(url, channel="program"):
                     headless=True,
                 )
                 context = browser.new_context(
-                    viewport={"width": RENDER_W, "height": RENDER_H},
+                    viewport={"width": profile["viewport"][0],
+                              "height": profile["viewport"][1]},
                     device_scale_factor=1,
                 )
                 page = context.new_page()
@@ -170,6 +210,11 @@ def render_overlay(url, channel="program"):
                     print("Usando grafica de demostracion.", flush=True)
                     page.set_content(DEMO)
 
+                if profile["style"] is not None:
+                    # A CSS rule applied to the outer root only. The root may
+                    # mount after DOMContentLoaded: the rule still applies.
+                    page.add_style_tag(content=profile["style"])
+
                 while not stop.is_set():
                     started = time.perf_counter()
                     try:
@@ -180,12 +225,14 @@ def render_overlay(url, channel="program"):
                                   if channel == "preview" else "data-direct-take-id")
                         selector = "[%s]" % marker
                         before = page.locator(selector).get_attribute(marker, timeout=2500)
+                        screenshot_started = time.perf_counter()
                         data = page.screenshot(
                             type="png",
                             omit_background=True,
                             animations="allow",
                             timeout=10000,
                         )
+                        screenshot_ms = (time.perf_counter() - screenshot_started) * 1000.0
                         after = page.locator(selector).get_attribute(marker, timeout=2500)
                         if before != after:
                             # Snapshot changed while screenshot was being captured.
@@ -213,7 +260,9 @@ def render_overlay(url, channel="program"):
                                 state["captures"] += 1
                             state[error_slot] = None
                             state["render_preview_ms" if channel == "preview" else "render_program_ms"] = (time.perf_counter()-started)*1000.0
+                            state["screenshot_preview_ms" if channel == "preview" else "screenshot_program_ms"] = screenshot_ms
                             if channel == "preview":
+                                state["captures_preview"] += 1
                                 state["preview_revision"] = int(after) if after and after.isdigit() else -1
                             else:
                                 state["program_rendered_take_id"] = after or ""
@@ -226,7 +275,7 @@ def render_overlay(url, channel="program"):
                         stop.wait(0.5)
 
                     elapsed = time.perf_counter() - started
-                    stop.wait(max(0, (0.1 if channel == "program" else 0.75) - elapsed))
+                    stop.wait(max(0, profile["interval"] - elapsed))
 
             finally:
                 # CRITICO: cerrar ANTES de salir de sync_playwright().
@@ -445,6 +494,9 @@ def main():
                     error = state["error"]
                     render_program_ms = state["render_program_ms"]
                     render_preview_ms = state["render_preview_ms"]
+                    screenshot_program_ms = state["screenshot_program_ms"]
+                    screenshot_preview_ms = state["screenshot_preview_ms"]
+                    captures_preview = state["captures_preview"]
 
                 # Control commands are consumed ONLY in the single camera
                 # output thread. This keeps output switching frame-aligned.
@@ -523,6 +575,9 @@ def main():
                             + " ".join(f"{key}={value/stat_frames:.2f}ms" for key,value in stat_ms.items())
                             + f" html_program={render_program_ms:.1f}ms"
                             + f" html_preview={render_preview_ms:.1f}ms"
+                            + f" screenshot_program={screenshot_program_ms:.1f}ms"
+                            + f" screenshot_preview={screenshot_preview_ms:.1f}ms"
+                            + f" capture_preview_total={captures_preview}"
                             + f" frames={stat_frames}",
                             flush=True,
                         )
