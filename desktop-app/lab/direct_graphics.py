@@ -101,7 +101,7 @@ def compile_overlay(rgba):
     color = np.ascontiguousarray(rgba[y:y + height, x:x + width, :3])
     alpha3 = cv2.cvtColor(a, cv2.COLOR_GRAY2RGB)
     premultiplied = cv2.multiply(color, alpha3, scale=1.0 / 255.0)
-    inverse = cv2.cvtColor(cv2.subtract(255, a), cv2.COLOR_GRAY2RGB)
+    inverse = cv2.cvtColor(255 - a, cv2.COLOR_GRAY2RGB)
     return (x, y, premultiplied, inverse)
 
 
