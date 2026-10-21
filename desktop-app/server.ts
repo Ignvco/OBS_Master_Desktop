@@ -23,7 +23,7 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
       const host=req.headers.host??'';
       const origin=req.headers.origin;
       let trusted=/^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(host);
-      if(origin){try{trusted=trusted&&new URL(origin).host===host;}catch{trusted=false;}}
+      if(origin){try{const parsed=new URL(origin);trusted=trusted&&parsed.host===host&&['http:','https:'].includes(parsed.protocol);}catch{trusted=false;}}
       if(!trusted){res.writeHead(403);res.end();return;}
       if(req.method!=='GET'){res.writeHead(405);res.end();return;}
       res.writeHead(directStatus?200:503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
