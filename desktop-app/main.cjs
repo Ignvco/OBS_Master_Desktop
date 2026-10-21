@@ -20,7 +20,7 @@ function createDirectSupervisor() {
   direct = new DirectProcess({
     python: process.env.STDQ_DIRECT_PYTHON || path.join(lab,'.venv312clean','Scripts','python.exe'),
     script: process.env.STDQ_DIRECT_SCRIPT || (app.isPackaged ? path.join(process.resourcesPath,'direct-engine','direct_graphics.py') : path.join(__dirname,'lab','direct_graphics.py')),
-    url:'http://127.0.0.1:3000/?overlay=lower-third',
+    url:'http://127.0.0.1:3000/?overlay=direct-program',
     log: message => { if (process.env.STDQ_DIRECT_DEBUG==='1') console.log('[Direct]',message.trim()); },
   });
 }
