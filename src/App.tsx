@@ -66,6 +66,7 @@ export default function App() {
   const customRevision = useRef(0);
   const [countdown, setCountdown] = useState<CountdownState>(() => StorageService.loadCountdown());
   const [obsStatus, setObsStatus] = useState<OBSStatus>(() => obsService.getStatus());
+  const [directProgramRunning,setDirectProgramRunning] = useState(false);
   const [obsConfig, setObsConfig] = useState<OBSConnectionConfig>(() => obsService.getConfig());
   const [isProtectedMode, setIsProtectedMode] = useState(true);
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
@@ -100,6 +101,22 @@ export default function App() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => { saveTimer.current = null; void flushComponentChanges(); }, delayMs);
   };
+
+  // Actual Electron supervisor state. Do not infer broadcast from local graphic flags.
+  useEffect(()=>{
+    let active=true;
+    const poll=async()=>{
+      try{
+        const response=await fetch('/api/direct/status',{cache:'no-store'});
+        if(!response.ok){if(active)setDirectProgramRunning(false);return;}
+        const data=await response.json();
+        if(active)setDirectProgramRunning(data?.state==='running');
+      }catch{if(active)setDirectProgramRunning(false);}
+    };
+    void poll();
+    const timer=window.setInterval(()=>{void poll();},2000);
+    return ()=>{active=false;window.clearInterval(timer);};
+  },[]);
 
   // Subscribe to OBS WebSocket status updates
   useEffect(() => {
@@ -682,6 +699,7 @@ export default function App() {
           <BroadcastControlSpace
             episode={episode}
             obsStatus={obsStatus}
+            directProgramRunning={directProgramRunning}
             countdown={countdown}
             components={publishedComponents}
             customComponents={publishedCustomComponents}
