@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
+import { createServer, request as requestHttp, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { resolve, sep, extname } from 'node:path';
 import { stationMiddleware } from '../src/server/stationBridge.ts';
@@ -14,11 +14,52 @@ const MIME: Record<string, string> = {
 
 /** Public only on loopback; preserve existing OBS URLs at localhost:3000. */
 export type NativeDirectStatus = {state:string;pid:number|null;error:string|null;camera:number;url:string};
-export function createStationHandler(staticDir: string, directStatus?: () => NativeDirectStatus) {
+export type DirectMonitorOptions = {port:number; token:string} | null;
+export function createStationHandler(staticDir: string, directStatus?: () => NativeDirectStatus, directMonitor?: () => DirectMonitorOptions) {
   const root = resolve(staticDir);
   return (req: IncomingMessage, res: ServerResponse) => {
     const address = req.url || '/';
     const route = address.split('?')[0];
+    if (route === '/api/direct/program.mjpg') {
+      const host=req.headers.host??'';
+      const origin=req.headers.origin;
+      const referrer=req.headers.referer;
+      const site=req.headers['sec-fetch-site'];
+      let trusted=/^(localhost|127\\.0\\.0\\.1|\\[::1\\]):\\d+$/.test(host);
+      if(origin){try{const parsed=new URL(origin);trusted=trusted&&parsed.host===host&&['http:','https:'].includes(parsed.protocol);}catch{trusted=false;}}
+      const sameSite = site==='same-origin' || (!!referrer&&(()=>{
+        try{return new URL(referrer).host===host;}catch{return false;}
+      })());
+      if(!trusted||!sameSite){res.writeHead(403);res.end();return;}
+      if(req.method!=='GET'){res.writeHead(405);res.end();return;}
+      const monitor=directMonitor?.();
+      if(!monitor||directStatus?.().state!=='running'){
+        res.writeHead(503,{'Cache-Control':'no-store'});
+        res.end('Direct Engine no está transmitiendo');return;
+      }
+      const stream=requestHttp({
+        hostname:'127.0.0.1',port:monitor.port,path:'/program.mjpg',
+        method:'GET',headers:{'X-Direct-Monitor-Token':monitor.token},
+      },upstream=>{
+        if(upstream.statusCode!==200){
+          res.writeHead(502,{'Cache-Control':'no-store'});
+          res.end('Monitor de Program no disponible');upstream.resume();return;
+        }
+        res.writeHead(200,{
+          'Content-Type':'multipart/x-mixed-replace; boundary=frame',
+          'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+          'Cross-Origin-Resource-Policy':'same-origin',
+        });
+        upstream.pipe(res);
+      });
+      stream.setTimeout(8000,()=>stream.destroy(new Error('Monitor timeout')));
+      stream.on('error',()=>{
+        if(res.headersSent)res.destroy();
+        else {res.writeHead(502);res.end('Monitor de Program no disponible');}
+      });
+      res.on('close',()=>stream.destroy());
+      stream.end();return;
+    }
     if (route === '/api/direct/status') {
       const host=req.headers.host??'';
       const origin=req.headers.origin;
@@ -70,8 +111,8 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
   };
 }
 
-export async function startStationServer(options: {port:number, staticDir:string, directStatus?:()=>NativeDirectStatus}): Promise<Server[]> {
-  const handler = createStationHandler(options.staticDir,options.directStatus);
+export async function startStationServer(options: {port:number, staticDir:string, directStatus?:()=>NativeDirectStatus, directMonitor?:()=>DirectMonitorOptions}): Promise<Server[]> {
+  const handler = createStationHandler(options.staticDir,options.directStatus,options.directMonitor);
   const listen = (host: string) => new Promise<Server>((resolveServer, rejectServer) => {
     const server = createServer(handler);
     server.once('error', rejectServer);
