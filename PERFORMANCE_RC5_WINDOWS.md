@@ -118,3 +118,45 @@ INICIAR_RC5_PERF_WINDOWS.bat
 Con esto el motor solicita MJPG **antes** de negociar resolución/FPS y registra si el controlador acepta el cambio. Si los FPS disminuyen, para volver al modo original basta cerrar Electron y ejecutar `set STDQ_DIRECT_CAMERA_FOURCC=` en CMD. **No aplicar en la rama `v5-native` ni afirmar mejora sin medición.**
 
 Si los tres modos se mantienen en ~10 FPS aun cuando Direct Engine/Playwright no están activos, la causa probable está en el dispositivo/driver, exposición automática/iluminación, o limitaciones USB/formatos admitidos; confirmar con control de cámara en Windows y no intentar ocultarlo duplicando frames.
+
+## Nueva medición real: prueba aislada de cámara, comparativa 720p vs 480p (2026-10-21)
+
+El usuario ejecutó el benchmark **fuera de OBS MASTER, Unity y StreamYard** con la cámara 0:
+
+| Test | FPS efectivos | read promedio | read p95 | Conversión BGR→RGB |
+|---|---:|---:|---:|---:|
+| DEFAULT 1280×720 | 9,6 | 100,9 ms | 116,4 ms | 2,9 ms |
+| MJPG solicitado 1280×720 | 9,4 | 104,5 ms | 123,5 ms | 2,3 ms |
+| YUY2 solicitado 1280×720 | 9,6 | 101,8 ms | 120,4 ms | 2,3 ms |
+| DEFAULT 640×480 | **29,8** | **33,2 ms** | 50,2 ms | 0,3 ms |
+
+**Resultado:** la etapa de captura directa de webcam limita el flujo a ~10 FPS a 720p INCLUSO SIN el compositor. A 640×480 logra ~30 FPS. No es principalmente el servidor local ni Unity Capture. La conversión de color consume ~3ms o menos: el retardo dominante son las esperas de `cap.read()`.
+
+### Identificación FourCC
+
+`0xE436EB7D` no es un FourCC textual. Es la primera palabra de la GUID `MEDIASUBTYPE_RGB24` de **DirectShow**. En este contexto refleja el subtipo RGB24 expuesto por la ruta DirectShow/OpenCV; **NO prueba** qué compresión USB/UVC seleccionó finalmente la webcam. `cap.set(CAP_PROP_FOURCC, MJPG)` devolviendo True tampoco demuestra que el transporte MJPEG haya sido negociado. Referencia: [Media Foundation and DirectShow Media Types](https://gix.github.io/media-types/), registro RGB 24; guías de OpenCV DirectShow señalan que alterar la resolución puede invalidar la selección de FOURCC.
+
+### Nuevo benchmark de negociación y formatos panorámicos (rama `v5-perf`)
+
+Para no sacrificar todavía la calidad de video físico, se actualizó el **mismo** `DIAGNOSTICO_CAMARA_RC5_WINDOWS.bat`, que ahora realiza:
+1. DEFAULT 1280×720 a 30 solicitados.
+2. MJPG **ANTES** de ajustar ancho/alto/FPS (comparador anterior).
+3. MJPG **DESPUÉS** de ajustar ancho/alto/FPS (nuevo orden, en algunos drivers necesario).
+4. YUY2 después de la negociación.
+5. 960×540 (16:9) predeterminado.
+6. 640×360 (16:9) predeterminado.
+7. 640×480 (4:3) predeterminado.
+8. 1280×720 usando Media Foundation (MSMF) en lugar de DirectShow (si abre).
+
+En todos, mostrar la **resolución real del fotograma devuelto**, no solo las propiedades reportadas. Salida: `REAL N FPS | read ...ms | frame actual WxH`; marca backend DSHOW/MSMF. Evitar otra aplicación usando el dispositivo. Puede tardar algo más que la prueba anterior, y algunos drivers MSMF rechazan el acceso; el script registra errores por modalidad sin modificar permanentemente la cámara.
+
+Ejecución CMD:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-perf"
+git pull origin v5-perf
+DIAGNOSTICO_CAMARA_RC5_WINDOWS.bat
+```
+
+**Decisión después de las medidas:** preferir 720p/30 reales con MJPG-LAST o MSMF. En segundo término, evaluar 960×540/30 o 640×360/30 (16:9) como entrada de la webcam y mantener composiciones/gráficas en 1280×720. Solo si no se consigue 16:9, ofrecer explícitamente 640×480/30 con recorte central a 16:9, sin estirar rostros. No activar automáticamente ningún modo. Si ninguna modalidad supera ~10 a 720p, probar cámara física en otro puerto USB, app Cámara de Windows y ajustes de exposición/driver/iluminación antes de concluir un límite de hardware.
+
+**Estado:** no se ha aplicado todavía un cambio global de resolución ni de tasa a OBS MASTER, porque el punto es recuperar 30 FPS conservando la calidad. La rama principal de producción `v5-native` permanece intacta.
