@@ -574,16 +574,23 @@ export default function App() {
         const result=await response.json().catch(()=>({}));
         if(!response.ok || !result.ok)
           throw new Error(result.error || 'El motor no confirmó el corte a Program');
-        const published=await SharedStation.read();
-        if(published?.components){
-          publishedRef.current=published.components;
-          setPublishedComponents(published.components);
-          StorageService.saveComponents(published.components,false);
-        }
-        if(published?.customComponents){
-          publishedCustomRef.current=published.customComponents;
-          setPublishedCustomComponents(published.customComponents);
-          StorageService.saveCustomComponents(published.customComponents,false);
+        // The engine and server have already confirmed this Cut. A transient
+        // UI refresh failure must NOT falsely report that video Take failed.
+        try {
+          const published=await SharedStation.read();
+          if(published?.components){
+            publishedRef.current=published.components;
+            setPublishedComponents(published.components);
+            StorageService.saveComponents(published.components,false);
+          }
+          if(published?.customComponents){
+            publishedCustomRef.current=published.customComponents;
+            setPublishedCustomComponents(published.customComponents);
+            StorageService.saveCustomComponents(published.customComponents,false);
+          }
+        }catch(refreshError){
+          showToast('warning','Take realizado; actualización visual pendiente',
+            'Comprueba Program y StreamYard. Reabre En Vivo para actualizar indicadores.');
         }
         setLiveFeedback(`Cut confirmado por Unity Camera · fotograma ${result.frame}. Verifica recepción en StreamYard.`);
         showToast('success','Take nativo confirmado','El motor envió el fotograma a Unity Camera. Confirma la señal en StreamYard.');
