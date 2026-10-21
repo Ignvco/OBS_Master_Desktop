@@ -20,7 +20,7 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
   return (req: IncomingMessage, res: ServerResponse) => {
     const address = req.url || '/';
     const route = address.split('?')[0];
-    if (route === '/api/direct/program.mjpg') {
+    if (route === '/api/direct/program.mjpg' || route === '/api/direct/preview.mjpg') {
       const host=req.headers.host??'';
       const origin=req.headers.origin;
       const referrer=req.headers.referer;
@@ -38,7 +38,7 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
         res.end('Direct Engine no está transmitiendo');return;
       }
       const stream=requestHttp({
-        hostname:'127.0.0.1',port:monitor.port,path:'/program.mjpg',
+        hostname:'127.0.0.1',port:monitor.port,path:route === '/api/direct/preview.mjpg'?'/preview.mjpg':'/program.mjpg',
         method:'GET',headers:{'X-Direct-Monitor-Token':monitor.token},
       },upstream=>{
         if(upstream.statusCode!==200){
