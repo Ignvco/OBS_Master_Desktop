@@ -13,11 +13,22 @@ const MIME: Record<string, string> = {
 };
 
 /** Public only on loopback; preserve existing OBS URLs at localhost:3000. */
-export function createStationHandler(staticDir: string) {
+export type NativeDirectStatus = {state:string;pid:number|null;error:string|null;camera:number;url:string};
+export function createStationHandler(staticDir: string, directStatus?: () => NativeDirectStatus) {
   const root = resolve(staticDir);
   return (req: IncomingMessage, res: ServerResponse) => {
     const address = req.url || '/';
     const route = address.split('?')[0];
+    if (route === '/api/direct/status') {
+      const host=req.headers.host??'';
+      const origin=req.headers.origin;
+      let trusted=/^(localhost|127\\.0\\.0\\.1|\\[::1\\]):\\d+$/.test(host);
+      if(origin){try{trusted=trusted&&new URL(origin).host===host;}catch{trusted=false;}}
+      if(!trusted){res.writeHead(403);res.end();return;}
+      if(req.method!=='GET'){res.writeHead(405);res.end();return;}
+      res.writeHead(directStatus?200:503,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});
+      res.end(JSON.stringify(directStatus?directStatus():{state:'unavailable'}));return;
+    }
     if (route === '/api/station/health') {
       res.writeHead(200, {'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store'});
       res.end(JSON.stringify({ok:true, mode:'desktop', version:'4.1.0-rc.1'})); return;
@@ -59,8 +70,8 @@ export function createStationHandler(staticDir: string) {
   };
 }
 
-export async function startStationServer(options: {port:number, staticDir:string}): Promise<Server[]> {
-  const handler = createStationHandler(options.staticDir);
+export async function startStationServer(options: {port:number, staticDir:string, directStatus?:()=>NativeDirectStatus}): Promise<Server[]> {
+  const handler = createStationHandler(options.staticDir,options.directStatus);
   const listen = (host: string) => new Promise<Server>((resolveServer, rejectServer) => {
     const server = createServer(handler);
     server.once('error', rejectServer);
