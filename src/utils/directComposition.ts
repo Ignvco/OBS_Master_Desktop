@@ -16,3 +16,20 @@ export function selectDirectProgramGraphics(
       ? {...config,branding:INITIAL_COMPONENTS['logo-bug'].branding}
       : config);
 }
+
+/** Preview is staged independently. A hidden-but-published graphic may be rehearsed. */
+export function selectDirectPreviewGraphics(
+  components:Record<ComponentType,EditorialComponentConfig>,
+  customComponents:CustomComponentRegistry,
+  ids:readonly string[],
+):EditorialComponentConfig[]{
+  const lookup:Record<string,EditorialComponentConfig>={...components,...customComponents};
+  return ids.filter(id=>Object.prototype.hasOwnProperty.call(lookup,id))
+    .map(id=>{
+      const config=lookup[id];
+      const visible={...config,visibleInOBS:true};
+      return config.type==='logo-bug'&&!config.branding
+        ? {...visible,branding:INITIAL_COMPONENTS['logo-bug'].branding}
+        : visible;
+    });
+}
