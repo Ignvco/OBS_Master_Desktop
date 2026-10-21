@@ -51,3 +51,24 @@ Nuevo `desktop-app/lab/direct_monitor_encoder.py`:
 - Si alguna validación falla, **cerrar completamente la app** y volver a abrir el clon `OBS-Master-v5-perf` mediante `INICIAR_RC5_HD_MJPG_WINDOWS.bat`. Ningún cambio ha sido aplicado a su rama.
 
 **No dar por aprobado el incremento de monitores solo por `Salida: 30 FPS`**: necesitamos confirmar explícitamente las tasas `STDQ_MONITOR` y percepción en En Vivo.
+
+## Hallazgo RC5M en Windows — pérdida de cadencia al muestrear
+
+**Medición real del usuario:** Unity sigue funcionando ~28–30 FPS con caídas transitorias a 25,1–25,7 FPS. Los dos JPEG monitores publicaron de forma sostenida ~**11,2–11,4 FPS** cada uno, aunque se configuraron 15; hubo `dropped=0` y `errors=0`, por lo que los codificadores terminaron de procesar todo lo que recibieron. `STDQ_PERF monitors=0.06–0.11ms` mide **el costo de encolar**, NO la CPU de los workers JPEG. Un `STDQ_TAKE_ACK` confirmó funcionamiento del Take.
+
+**Causa principal del submuestreo:** `_LatestFrameChannel.offer` actualizaba `next_due=timestamp+interval` al aceptar un fotograma. Con fuente ~30 FPS y objetivo 15 FPS, el intervalo de 66,67ms puede no haberse cumplido al cabo de 2 fotogramas por pequeñas variaciones de tiempo; espera 3 en ocasiones, cayendo a ~11 FPS. Esto NO es evidencia de fallo de red ni de lentitud del proxy MJPEG.
+
+**Corrección implementada en misma rama experimental:** ahora `next_due` avanza por los intervalos absolutos (phase-lock), salta deadlines perdidos sin catch-up y mantiene cola de tamaño uno. Las pruebas `test_direct_monitor_encoder.py` incluyen escenario determinista de 600 muestras a 30Hz con jitter (antes ~232 de 600, ahora ~300 de 600) y pausa larga (sin ráfaga).
+
+**La mejora en Windows sigue pendiente.** No prometer 15 FPS hasta que aparezca `STDQ_MONITOR program=~15fps preview=~15fps` durante varias mediciones. Verificar si la carga extra provoca caídas Unity sostenidas a 25 FPS; si las provoca, reducir calidad JPEG o tasa de monitores antes de sacrificar StreamYard.
+
+### Reprobar en mismo clon Windows (no clonar nuevamente)
+
+Cierra completamente OBS MASTER desde bandeja y Unity Camera; desde CMD:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-monitor-async"
+git pull origin v5-monitor-async
+INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
+```
+
+El BAT ejecuta pruebas de temporización y aislamiento antes de compilar y copiar los assets. Comparar al menos 5 líneas `STDQ_MONITOR` y `Salida`. Repetir un Cut para verificar aislamiento Preview→Program y observar StreamYard. Si hay regresiones, volver al clon `OBS-Master-v5-perf` con su BAT MJPG anterior, sin hacer merge.
