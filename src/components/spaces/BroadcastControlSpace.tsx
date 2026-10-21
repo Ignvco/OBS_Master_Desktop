@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { matchingLiveSources, listBindableSources, liveBindingReport } from '../../utils/liveSources';
 import { 
   EpisodeData, 
@@ -96,7 +96,66 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   const [detailGraphic,setDetailGraphic]=useState<string|null>(null);
   const [programMonitorError,setProgramMonitorError]=useState(false);
   const [previewMonitorError,setPreviewMonitorError]=useState(false);
+  const [previewSelection,setPreviewSelection]=useState<{revision:number;ids:string[]}>({revision:0,ids:[]});
+  const [previewPreparing,setPreviewPreparing]=useState<string|null>(null);
+  const [previewOperationError,setPreviewOperationError]=useState('');
+  const previewBusyRef=useRef(false);
   useEffect(()=>{setProgramMonitorError(false);setPreviewMonitorError(false);},[directProgramRunning]);
+
+  // Stage graphics from this EXISTING En Vivo panel. The server keeps Preview
+  // separate from Program; no published graphic visibility is touched here.
+  useEffect(()=>{
+    if(!directProgramRunning)return;
+    let alive=true;
+    const load=async()=>{
+      if(previewBusyRef.current)return;
+      try{
+        const response=await fetch('/api/direct/preview',{cache:'no-store'});
+        if(!response.ok)throw new Error('Preview no disponible');
+        const payload=await response.json();
+        if(alive && Number.isSafeInteger(payload.preview?.revision) && Array.isArray(payload.preview?.ids)){
+          setPreviewSelection({revision:payload.preview.revision,ids:payload.preview.ids});
+        }
+      }catch{/* Keep last confirmed Preview selection during reconnection. */}
+    };
+    void load();
+    const timer=window.setInterval(()=>{void load();},1500);
+    return ()=>{alive=false;window.clearInterval(timer);};
+  },[directProgramRunning]);
+
+  const togglePreviewGraphic=async(id:string)=>{
+    if(!directProgramRunning || previewBusyRef.current)return;
+    previewBusyRef.current=true;
+    setPreviewPreparing(id);
+    setPreviewOperationError('');
+    try{
+      // Re-read the authoritative revision just before mutating it.
+      const read=await fetch('/api/direct/preview',{cache:'no-store'});
+      if(!read.ok)throw new Error('No se pudo consultar la preparación de Preview');
+      const current=(await read.json()).preview as {revision:number;ids:string[]};
+      if(!Number.isSafeInteger(current?.revision)||!Array.isArray(current?.ids))
+        throw new Error('Estado Preview inválido');
+      const ids=current.ids.includes(id)
+        ? current.ids.filter(item=>item!==id)
+        : [...current.ids,id];
+      const response=await fetch('/api/direct/preview',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ids,expectedRevision:current.revision}),
+      });
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(payload.error || 'No se pudo preparar Preview');
+      if(!Number.isSafeInteger(payload.preview?.revision)||!Array.isArray(payload.preview?.ids))
+        throw new Error('El servidor no confirmó la preparación');
+      setPreviewSelection({revision:payload.preview.revision,ids:payload.preview.ids});
+    }catch(error){
+      const message=error instanceof Error?error.message:'No se pudo preparar Preview';
+      setPreviewOperationError(message);
+    }finally{
+      previewBusyRef.current=false;
+      setPreviewPreparing(null);
+    }
+  };
   const program = obsStatus.scenes.find(scene => scene.name === obsStatus.currentProgramScene);
   const programSources = program?.sources || [];
   const bindableSources = listBindableSources(programSources);
@@ -450,10 +509,10 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length} componentes)</h3>
-              <p className="text-xs text-slate-400">Detección automática por URL confirmada de OBS. Los vínculos manuales se verifican antes de activar una gráfica.</p>
+              <p className="text-xs text-slate-400">{directProgramRunning ? 'Prepara gráficas en el monitor Preview sin afectar Al Aire ni StreamYard. Take nativo sigue bloqueado hasta su integración.' : 'Detección automática por URL confirmada de OBS. Los vínculos manuales se verifican antes de activar una gráfica.'}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-              <button onClick={() => setEditLinks(!editLinks)} className="border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10" aria-expanded={editLinks}>{editLinks ? 'Cerrar vínculos' : 'Vincular fuentes OBS'}</button>
+              {!directProgramRunning && <button onClick={() => setEditLinks(!editLinks)} className="border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10" aria-expanded={editLinks}>{editLinks ? 'Cerrar vínculos' : 'Vincular fuentes OBS'}</button>}
               <span className="flex items-center gap-1 text-rose-400 font-bold">
                 <span className="w-2 h-2 rounded-full bg-rose-500" /> AL AIRE
               </span>
@@ -463,23 +522,25 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             </div>
           </div>
 
+          {directProgramRunning && previewOperationError && <p className="text-xs text-rose-300" role="alert">Preview: {previewOperationError}</p>}
           <div className="live-connection-summary" role="status" aria-live="polite">
             <span><strong>{report.verified}</strong> detectadas</span>
             <span><strong>{report.live}</strong> fuentes visibles</span>
             <span className={report.missing?'text-amber-300':''}><strong>{report.missing}</strong> sin vincular</span>
             {report.ambiguous>0&&<span className="text-rose-300"><strong>{report.ambiguous}</strong> ambiguas</span>}
-            <label><input type="checkbox" checked={showOnlyLinked} onChange={e=>setShowOnlyLinked(e.target.checked)}/> Solo detectadas</label>
+            {!directProgramRunning && <label><input type="checkbox" checked={showOnlyLinked} onChange={e=>setShowOnlyLinked(e.target.checked)}/> Solo detectadas</label>}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
             {[...componentLabels, ...Object.values(customComponents).map(config=>({type:config.instanceId!,label:config.name,icon:'✦'}))].map((c) => {
               const config = customComponents[c.type] || components[c.type as ComponentType];
               if (!config) return null;
-              if(showOnlyLinked && matchingLiveSources(programSources,config,config.type,linkedSource(config)).length!==1)return null;
+              if(showOnlyLinked && !directProgramRunning && matchingLiveSources(programSources,config,config.type,linkedSource(config)).length!==1)return null;
               const linked = linkedSource(config);
               // Custom graphics MUST be explicitly linked to the browser source with their own URL.
               const matches = matchingLiveSources(programSources, config, config.type, linked);
               const source = matches.length === 1 && matches[0].type === 'browser_source' ? matches[0] : null;
               const pending = pendingComponents.includes(c.type);
+              const previewReady = previewSelection.ids.includes(c.type);
               const unavailable = !obsStatus.connected || !program || !source;
               const isLive = !!config.visibleInOBS && !!source?.enabled;
               const status = !obsStatus.connected ? 'OBS DESCONECTADO'
@@ -507,6 +568,13 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                     <span className="text-[10px] text-slate-400 mt-1">{status}</span>
                   </button>
                   <div className="live-graphic-actions">
+                    {directProgramRunning && <button type="button"
+                      disabled={previewPreparing!==null || transitionPending}
+                      title={previewReady?'Quitar únicamente de Preview (no afecta Program)':'Preparar gráfica publicada en Preview (no afecta Program)'}
+                      aria-pressed={previewReady}
+                      onClick={()=>{void togglePreviewGraphic(c.type);}}
+                      className={previewReady?'text-emerald-300':''}
+                    >{previewPreparing===c.type?'Preparando…':previewReady?'✓ En Preview':'Preparar Preview'}</button>}
                     <button type="button" onClick={()=>onEditGraphic(c.type)} title="Abrir esta gráfica en Content Studio">Editar</button>
                     <button type="button" onClick={()=>setDetailGraphic(old=>old===c.type?null:c.type)} aria-expanded={detailGraphic===c.type}>Detalles</button>
                     <button type="button" disabled={!isLive||pending} title="Reproducir la animación publicada sin cambiar su diseño" onClick={()=>onReplayGraphic(c.type,linked||source?.name)}>↻ Motion</button>
@@ -525,7 +593,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                       catch(err){window.alert(err instanceof Error?err.message:'No se pudo crear la fuente.');}
                       finally{setCreatingSource(null);}
                     }}>{creatingSource===config.instanceId?'Creando fuente…':'Crear fuente OBS'}</button>}
-                  {editLinks && <select
+                  {editLinks && !directProgramRunning && <select
                     aria-label={`Fuente OBS para ${c.label}`}
                     className="w-full mt-1 bg-slate-900 border border-white/20 rounded-lg text-[11px] p-2 text-white"
                     value={linked || ''}
