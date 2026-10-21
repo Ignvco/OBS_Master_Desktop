@@ -29,9 +29,9 @@ RENDER_W, RENDER_H = 1920, 1080
 def html_capture_profile(height, channel):
     """Isolated opt-in: rasterize native 1920x1080 stage to 1280x720.
 
-    The CSS scale is on the outer Direct compositor only; individual editor
-    components keep their 1920x1080 authored positions and original Motion
-    timing. It is NOT applied to Content Studio or to the user's UI.
+    Device scaling preserves 1920x1080 CSS viewport/breakpoints/geometry,
+    unlike shrinking the viewport or altering the root's CSS transform.
+    Not applied to Content Studio or Electron's production control UI.
     """
     if height not in (720, 1080):
         raise ValueError("STDQ_DIRECT_HTML_CAPTURE must be 720 or 1080")
@@ -40,16 +40,18 @@ def html_capture_profile(height, channel):
     if height == 1080:
         return {
             "viewport": (RENDER_W, RENDER_H),
-            "style": None,
+            "device_scale_factor": 1.0,
+            "screenshot_scale": "css",
             "interval": 0.1 if channel == "program" else 0.75,
         }
-    selector = "[data-direct-take-id]" if channel == "program" else "[data-direct-preview-revision]"
     return {
-        "viewport": (W, H),
-        "style": (
-            f"{selector} {{transform:scale(0.6666666666666666) !important;"
-            "transform-origin:0 0 !important;}}"
-        ),
+        # Keep the actual CSS viewport 1920x1080, including breakpoints,
+        # positions and document dimensions. Use reduced device pixel ratio
+        # ONLY for the headless HTML screenshot, never for Content Studio.
+        # Chromium outputs 1280x720 device pixels with scale="device".
+        "viewport": (RENDER_W, RENDER_H),
+        "device_scale_factor": W / RENDER_W,
+        "screenshot_scale": "device",
         "interval": 0.10 if channel == "program" else 0.125,
     }
 
@@ -178,7 +180,8 @@ def render_overlay(url, channel="program"):
     height = int(os.environ.get("STDQ_DIRECT_HTML_CAPTURE", "1080"))
     profile = html_capture_profile(height, channel)
     print(
-        f"HTML {channel}: viewport={profile['viewport'][0]}x{profile['viewport'][1]} "
+        f"HTML {channel}: CSS viewport={profile['viewport'][0]}x{profile['viewport'][1]} "
+        f"DPR={profile['device_scale_factor']:.4f} "
         f"intervalo={profile['interval'] * 1000:.0f}ms "
         f"modo={'rasterizado 720p' if height == 720 else 'original 1080p'}",
         flush=True,
@@ -195,7 +198,7 @@ def render_overlay(url, channel="program"):
                 context = browser.new_context(
                     viewport={"width": profile["viewport"][0],
                               "height": profile["viewport"][1]},
-                    device_scale_factor=1,
+                    device_scale_factor=profile["device_scale_factor"],
                 )
                 page = context.new_page()
 
@@ -209,11 +212,6 @@ def render_overlay(url, channel="program"):
                 else:
                     print("Usando grafica de demostracion.", flush=True)
                     page.set_content(DEMO)
-
-                if profile["style"] is not None:
-                    # A CSS rule applied to the outer root only. The root may
-                    # mount after DOMContentLoaded: the rule still applies.
-                    page.add_style_tag(content=profile["style"])
 
                 while not stop.is_set():
                     started = time.perf_counter()
@@ -230,6 +228,7 @@ def render_overlay(url, channel="program"):
                             type="png",
                             omit_background=True,
                             animations="allow",
+                            scale=profile["screenshot_scale"],
                             timeout=10000,
                         )
                         screenshot_ms = (time.perf_counter() - screenshot_started) * 1000.0
@@ -248,6 +247,11 @@ def render_overlay(url, channel="program"):
                         elif img.shape[2] == 3:
                             img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
 
+                        if height == 720 and img.shape[:2] != (H, W):
+                            raise RuntimeError(
+                                f"Captura HD esperada {W}x{H}, "
+                                f"Playwright devolvió {img.shape[1]}x{img.shape[0]}"
+                            )
                         if img.shape[:2] != (H, W):
                             img = cv2.resize(img, (W, H))
 
