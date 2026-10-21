@@ -310,7 +310,18 @@ def main():
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
                 cap.set(cv2.CAP_PROP_FPS, FPS)
+                width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                reported_fps = cap.get(cv2.CAP_PROP_FPS)
+                fourcc_raw = int(cap.get(cv2.CAP_PROP_FOURCC) or 0)
+                fourcc = "".join(chr((fourcc_raw >> (8 * i)) & 255) for i in range(4))
                 print("Camara fisica abierta:", args.camera, flush=True)
+                print(
+                    f"Entrada reportada: {width:.0f}x{height:.0f} / "
+                    f"{reported_fps:.1f} FPS configurados / "
+                    f"FourCC {fourcc!r}; la tasa real se mide abajo",
+                    flush=True,
+                )
             else:
                 print("AVISO: Webcam no disponible.", flush=True)
                 cap.release()
