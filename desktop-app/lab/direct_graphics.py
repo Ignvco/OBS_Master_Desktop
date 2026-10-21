@@ -20,6 +20,7 @@ import numpy as np
 import pyvirtualcam
 from playwright.sync_api import sync_playwright
 from direct_monitor import ProgramMonitor
+from direct_monitor_encoder import AsyncMonitorEncoder
 
 W, H, FPS = 1280, 720, 30
 RENDER_W, RENDER_H = 1920, 1080
@@ -307,6 +308,7 @@ def main():
         preview_worker.start()
     cap = None
     monitor = None
+    monitor_encoder = None
     monitor_token = os.environ.get("STDQ_DIRECT_MONITOR_TOKEN", "")
     monitor_enabled = os.environ.get("STDQ_DIRECT_MONITORS", "1") != "0"
     if monitor_token and monitor_enabled:
@@ -316,7 +318,20 @@ def main():
         )
         try:
             monitor.start()
+            # Both MJPEG previews are optional and isolated from the Unity
+            # output loop. Higher rates must NEVER delay camera.send().
+            monitor_fps = int(os.environ.get("STDQ_DIRECT_MONITOR_FPS", "15"))
+            monitor_encoder = AsyncMonitorEncoder(
+                monitor, stop, blend_overlay_inplace, fps=monitor_fps,
+            )
+            monitor_encoder.start()
+            print(f"Monitores internos: 2 JPEG workers async; objetivo {monitor_fps} FPS cada uno", flush=True)
         except Exception as exc:
+            if monitor_encoder is not None:
+                monitor_encoder.close()
+                monitor_encoder = None
+            if monitor is not None:
+                monitor.close()
             monitor = None
             print("Aviso: monitor de Program no disponible:", exc, flush=True)
 
@@ -417,9 +432,10 @@ def main():
                 stat_ms["convert"] += (capture_convert_end-capture_read_end)*1000.0
                 stat_ms["camera"] += (capture_convert_end-t_camera)*1000.0
                 t_blend = time.perf_counter()
-                # Keep a separate uncomposited physical frame ONLY when the
-                # Preview JPEG monitor needs it (once per 8 broadcast frames).
-                base_rgb = rgb.copy() if monitor is not None and (counter + 1) % 8 == 0 else None
+                # Snapshot Preview only when the independent JPEG worker is
+                # due; Program RGB is untouched until after cam.send().
+                monitor_sample_time = time.monotonic()
+                base_rgb = rgb.copy() if monitor_encoder is not None and monitor_encoder.needs_preview(monitor_sample_time) else None
                 with lock:
                     overlay = state["overlay"]
                     preview_overlay = state["preview_overlay"]
@@ -476,30 +492,13 @@ def main():
                     pending_rollback_ack = None
 
                 t_monitors = time.perf_counter()
-                # Every previewed frame was successfully submitted to Unity.
-                # JPEG monitoring is intentionally capped near 7.5fps to avoid
-                # competing with the 30fps broadcast compositor.
-                if monitor is not None and counter % 4 == 0:
-                    reduced = cv2.resize(rgb, (640, 360), interpolation=cv2.INTER_AREA)
-                    ok, jpeg = cv2.imencode(
-                        ".jpg", cv2.cvtColor(reduced, cv2.COLOR_RGB2BGR),
-                        [int(cv2.IMWRITE_JPEG_QUALITY), 70],
+                # Every Program snapshot comes from a successfully sent Unity
+                # frame; Preview uses its own pre-blend physical-frame copy.
+                # Encoding and MJPEG HTTP fanout run on independent workers.
+                if monitor_encoder is not None:
+                    monitor_encoder.submit(
+                        rgb, base_rgb, preview_overlay, monitor_sample_time,
                     )
-                    if ok:
-                        monitor.publish(jpeg.tobytes())
-
-                # Independently composited Preview: same physical input frame,
-                # different HTML overlay. NEVER send Preview to Unity Capture.
-                if monitor is not None and counter % 8 == 0 and base_rgb is not None:
-                    preview_rgb = blend_overlay_inplace(base_rgb, preview_overlay)
-                    small = cv2.resize(preview_rgb, (640, 360), interpolation=cv2.INTER_AREA)
-                    ok, jpeg = cv2.imencode(
-                        ".jpg", cv2.cvtColor(small, cv2.COLOR_RGB2BGR),
-                        [int(cv2.IMWRITE_JPEG_QUALITY), 70],
-                    )
-                    if ok:
-                        monitor.publish_preview(jpeg.tobytes())
-
                 stat_ms["monitors"] += (time.perf_counter()-t_monitors)*1000.0
                 t_sleep = time.perf_counter()
                 cam.sleep_until_next_frame()
@@ -516,6 +515,8 @@ def main():
                     )
                     if error:
                         print("Aviso HTML:", error, flush=True)
+                    if monitor_encoder is not None:
+                        print(monitor_encoder.report(), flush=True)
                     if stat_frames:
                         print(
                             "STDQ_PERF "
@@ -536,6 +537,8 @@ def main():
     finally:
         # La camara virtual se libera por su context manager antes de entrar aqui.
         stop.set()
+        if monitor_encoder is not None:
+            monitor_encoder.close()
         if monitor is not None:
             monitor.close()
         if cap is not None:
