@@ -160,3 +160,43 @@ DIAGNOSTICO_CAMARA_RC5_WINDOWS.bat
 **Decisión después de las medidas:** preferir 720p/30 reales con MJPG-LAST o MSMF. En segundo término, evaluar 960×540/30 o 640×360/30 (16:9) como entrada de la webcam y mantener composiciones/gráficas en 1280×720. Solo si no se consigue 16:9, ofrecer explícitamente 640×480/30 con recorte central a 16:9, sin estirar rostros. No activar automáticamente ningún modo. Si ninguna modalidad supera ~10 a 720p, probar cámara física en otro puerto USB, app Cámara de Windows y ajustes de exposición/driver/iluminación antes de concluir un límite de hardware.
 
 **Estado:** no se ha aplicado todavía un cambio global de resolución ni de tasa a OBS MASTER, porque el punto es recuperar 30 FPS conservando la calidad. La rama principal de producción `v5-native` permanece intacta.
+
+## Confirmación crítica — 720p a ~30 FPS es posible (benchmark real de usuario)
+
+Segundo benchmark aislado ejecutado en Windows, con la misma webcam 0:
+
+| Configuración | FPS efectivos | Tiempo medio read | Resolución real |
+|---|---:|---:|---|
+| DirectShow 720p por defecto | 9,6 | 101,2 ms | 1280×720 |
+| MJPG **primero** y luego resolución/FPS | 9,5 | 103,1 ms | 1280×720 |
+| **MJPG ÚLTIMO** después de resolución/FPS | **29,2** | **32,9 ms** | **1280×720** |
+| YUY2 último | 9,5 | 103,0 ms | 1280×720 |
+| Predeterminado 960×540 | 13,9 | 70,4 ms | 960×540 |
+| Predeterminado 640×360 | 29,4 | 33,7 ms | 640×360 |
+| Predeterminado 640×480 | 27,9 | 35,5 ms | 640×480 |
+| **MSMF 720p** | **30,1** | **31,6 ms** | **1280×720** |
+
+**Interpretación:** no se requiere reducir a 480p. La webcam puede entregar 720p a ~30 FPS; el verdadero factor fue la negociación del formato y el backend. DirectShow MJPG-LAST es la ruta elegida para el primer ensayo dentro de Unity Camera (p95 read 56,3 ms vs MSMF p95 70,8 ms en este registro), **sin afirmar todavía que el compositor completo podrá entregar 30 FPS**. Las rutas alternativas permanecen para comparaciones futuras.
+
+### Iniciar OBS MASTER HD en la rama experimental
+
+1. Detener Unity Camera, liberar webcam en StreamYard y cerrar completamente OBS MASTER desde bandeja. No ejecutar durante emisión pública.
+2. En CMD:
+   ```bat
+   cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-perf"
+   git pull origin v5-perf
+   INICIAR_RC5_HD_MJPG_WINDOWS.bat
+   ```
+3. El script configura, **solo para ese proceso**:
+   `STDQ_DIRECT_CAMERA_FOURCC=MJPG`, `STDQ_DIRECT_MONITORS=1` y `STDQ_DIRECT_DEBUG=1`, además de invocar la batería de pruebas del proyecto, tests offline del compositor y compilación/actualización de Electron.
+4. Activar Unity Camera desde la bandeja. Verificar las líneas:
+   - `Formato solicitado al final: MJPG | set FourCC: True`
+   - `Entrada reportada: 1280x720 / 30.0 FPS configurados / FourCC MJPG`
+   - Sin aviso `el controlador NO confirmó MJPG`.
+5. Dejar cámara y monitores corriendo 60–90 s. Registrar cinco `Salida: ... FPS` y cinco `STDQ_PERF`, incluyendo **read** y **convert**, no solo `camera`.
+6. Preparar dos overlays en Preview, confirmar que Program/StreamYard permanecen intactos, y realizar un **único** Take/Cut fuera de emisión pública.
+7. Medir 60 s más y observar si hay caída de FPS o interrupciones; completar inicio/cierre limpio.
+8. Si la salida sigue por debajo de 25–30 FPS a pesar de `read` ≈33 ms, **no sacrificar calidad**: próxima optimización será desacoplar la lectura de webcam de la composición/envío usando una cola de último fotograma (sin latencia acumulada) o reducir el coste de los monitores JPEG, tras comprobar la telemetría.
+9. Ante regresión, salir completamente de Electron, detener Unity Camera y abrir el proyecto anterior `OBS-Master-v5-native`. No mezclar bases de builds ni alterar `main`.
+
+Se añadió `configure_capture()` con orden fijo width→height→FPS→FOURCC y tests que lo validan, además de una advertencia cuando la webcam no confirma MJPG. **Aún no validado el rendimiento del motor completo con este formato en Windows.**
