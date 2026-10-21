@@ -46,7 +46,18 @@ class _LatestFrameChannel:
         with self.condition:
             if self.closed or timestamp < self.next_due:
                 return False
-            self.next_due = timestamp + self.interval
+            # Phase-locked pacing. Do NOT reset the deadline to
+            # timestamp + interval: with a 30-Hz producer and 15-Hz target,
+            # slight timing jitter then selects every third camera frame
+            # (~10-11 FPS) instead of every second (~15 FPS).
+            #
+            # Skip missed deadlines after pauses so we never burst/catch up
+            # and never queue more than the freshest pending frame.
+            if self.next_due == 0.0:
+                self.next_due = timestamp + self.interval
+            else:
+                missed = int(max(0.0, (timestamp - self.next_due) / self.interval))
+                self.next_due += (missed + 1) * self.interval
             if self.pending is not None:
                 self.dropped += 1
             self.pending = (frame, overlay)
