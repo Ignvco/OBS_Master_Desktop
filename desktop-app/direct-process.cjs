@@ -4,6 +4,7 @@
 // No extra UI panel or second transmission mode.
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
+const { randomBytes } = require('node:crypto');
 const path = require('node:path');
 
 class DirectProcess {
@@ -13,6 +14,8 @@ class DirectProcess {
     this.camera=camera;
     this.url=url;
     this.log=log;
+    this.monitorPort=31311;
+    this.monitorToken=null;
     this.child=null;
     this.state='stopped';
     this.lastError=null;
@@ -28,10 +31,15 @@ class DirectProcess {
     const parsed=new URL(this.url);
     if(parsed.protocol!=='http:' || parsed.hostname!=='127.0.0.1' || parsed.port!=='3000') throw Error('La URL de gráficos debe apuntar al servidor local 127.0.0.1:3000.');
     this.state='starting';this.lastError=null;
+    this.monitorToken=randomBytes(32).toString('hex');
     try {
       const proc=spawn(this.python,['-u',this.script,'--camera',String(this.camera),'--url',this.url],{
         windowsHide:true,stdio:['pipe','pipe','pipe'],shell:false,
-        cwd:path.dirname(this.script),env:{...process.env,PYTHONUNBUFFERED:'1'}
+        cwd:path.dirname(this.script),env:{
+          ...process.env,PYTHONUNBUFFERED:'1',
+          STDQ_DIRECT_MONITOR_TOKEN:this.monitorToken,
+          STDQ_DIRECT_MONITOR_PORT:String(this.monitorPort),
+        }
       });
       this.child=proc;
       this._closePromise=new Promise(resolve=>{this._closed=resolve;});
