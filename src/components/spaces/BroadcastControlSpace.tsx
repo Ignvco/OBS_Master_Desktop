@@ -33,6 +33,7 @@ import { formatTime } from '../../utils/animationEngine';
 interface BroadcastControlSpaceProps {
   episode: EpisodeData;
   obsStatus: OBSStatus;
+  directProgramRunning?: boolean;
   countdown: CountdownState;
   components: Record<ComponentType, EditorialComponentConfig>;
   customComponents: CustomComponentRegistry;
@@ -60,6 +61,7 @@ interface BroadcastControlSpaceProps {
 export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   episode,
   obsStatus,
+  directProgramRunning = false,
   countdown,
   components,
   customComponents,
@@ -92,6 +94,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   const [creatingSource,setCreatingSource]=useState<string|null>(null);
   const [selectedTransition, setSelectedTransition] = useState('');
   const [detailGraphic,setDetailGraphic]=useState<string|null>(null);
+  const [programMonitorError,setProgramMonitorError]=useState(false);
+  useEffect(()=>{setProgramMonitorError(false);},[directProgramRunning]);
   const program = obsStatus.scenes.find(scene => scene.name === obsStatus.currentProgramScene);
   const programSources = program?.sources || [];
   const bindableSources = listBindableSources(programSources);
@@ -179,7 +183,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
           }`}>
             <span className={`w-2 h-2 rounded-full ${obsStatus.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-            <span>{obsStatus.connected ? `OBS CONECTADO (${obsStatus.latencyMs}ms)` : 'OBS DESCONECTADO'}</span>
+            <span>{directProgramRunning ? 'UNITY CAMERA ACTIVA' : obsStatus.connected ? `OBS CONECTADO (${obsStatus.latencyMs}ms)` : 'OBS DESCONECTADO'}</span>
           </div>
         </div>
 
@@ -211,7 +215,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
       </div>
 
       <div className="live-production-status" role="status">
-        <div><span>SEÑAL</span><strong>{obsStatus.connected?'Control OBS conectado':'Fuera de conexión'}</strong></div>
+        <div><span>SEÑAL</span><strong>{directProgramRunning?'Unity Camera activa':obsStatus.connected?'Control OBS conectado':'Fuera de conexión'}</strong></div>
         <div><span>ESCENARIO PROGRAM</span><strong>{obsStatus.currentProgramScene||'Sin detectar'}</strong></div>
         <div><span>MODO ESTUDIO</span><strong>{obsStatus.studioMode?'Preview protegido':'Cambio directo de escenas'}</strong></div>
         <div><span>OPERACIONES</span><strong>{pendingComponents.length?`${pendingComponents.length} en curso`:'Sin operaciones pendientes'}</strong></div>
@@ -276,12 +280,12 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
               </span>
               <span className="text-xs font-extrabold uppercase tracking-wider text-rose-300">
-                PROGRAM (SALIDA OBS)
+                {directProgramRunning?'PROGRAM (UNITY CAMERA)':'PROGRAM (SALIDA OBS)'}
               </span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
-                SALIDA OBS
+                {directProgramRunning?'SALIDA DIRECT':'SALIDA OBS'}
               </span>
               <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
                 {obsStatus.currentProgramScene}
@@ -291,16 +295,22 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {/* Monitor Screen Frame (16:9 Aspect Ratio) */}
           <div className="relative aspect-video bg-[#050608] monitor-grid flex items-center justify-center overflow-hidden">
-            {/* Screen Content Mock Representation */}
-            <div className="text-center space-y-2 p-6 z-10">
-              <Tv className="w-10 h-10 text-rose-500/60 mx-auto animate-pulse" />
-              <div className="text-base font-bold text-white tracking-tight">
-                {obsStatus.currentProgramScene}
+            {directProgramRunning && !programMonitorError ? (
+              <img src="/api/direct/program.mjpg"
+                className="absolute inset-0 w-full h-full object-contain"
+                alt="Señal de Program proveniente del motor Unity Camera"
+                onError={()=>setProgramMonitorError(true)}
+              />
+            ) : (
+              <div className="text-center space-y-2 p-6 z-10">
+                <Tv className="w-10 h-10 text-rose-500/60 mx-auto animate-pulse" />
+                <div className="text-base font-bold text-white tracking-tight">
+                  {directProgramRunning
+                    ? 'No se pudo abrir el monitor de Unity Camera. Confirma la señal en StreamYard.'
+                    : 'Monitor de Program no disponible. Inicia Unity Camera desde la bandeja.'}
+                </div>
               </div>
-              <p className="text-xs text-slate-300 max-w-sm mx-auto">
-                Vista esquemática de Program, no video real. Confirma la señal en el monitor de OBS.
-              </p>
-            </div>
+            )}
 
             {/* Active Graphic Overlays Indicators on Program */}
             <div className="absolute top-3 left-3 flex flex-wrap gap-1 max-w-[70%]">
@@ -315,15 +325,15 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
             {/* Corner Badge */}
             <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-rose-500/30 text-[10px] text-rose-400 font-mono font-bold">
-              FORMATO NO VERIFICADO
+              {directProgramRunning && !programMonitorError?'MONITOR REAL · 640×360 / ~7 FPS':'MONITOR NO DISPONIBLE'}
             </div>
           </div>
 
           {/* Program Footer */}
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between text-xs text-slate-300">
-            <span>Estado de salida OBS · Verificar en monitor real</span>
+            <span>{directProgramRunning?'Monitor del compositor Direct · Comprueba recepción en StreamYard':'Program · Sin señal Direct de monitoreo'}</span>
             <span className="font-semibold text-emerald-400">
-              {obsStatus.virtualCamActive ? 'Cámara Virtual: TRANSMITIENDO' : 'Cámara Virtual: OFF'}
+              {directProgramRunning ? 'UNITY CAMERA: MOTOR ACTIVO' : obsStatus.virtualCamActive ? 'Cámara Virtual OBS: ACTIVA' : 'Cámara Virtual: OFF'}
             </span>
           </div>
         </div>
