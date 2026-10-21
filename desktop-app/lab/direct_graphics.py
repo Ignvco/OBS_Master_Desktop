@@ -10,6 +10,7 @@ Corrección de ciclo de vida:
 """
 import argparse
 import os
+import queue
 import sys
 import threading
 import time
@@ -25,7 +26,10 @@ RENDER_W, RENDER_H = 1920, 1080
 
 lock = threading.Lock()
 stop = threading.Event()
-state = {"overlay": None, "preview_overlay": None, "error": None, "preview_error": None, "captures": 0, "renderer_done": False}
+state = {"overlay": None, "preview_overlay": None, "preview_revision": -1,
+         "program_rendered_take_id": "", "error": None, "preview_error": None,
+         "captures": 0, "renderer_done": False}
+control_queue = queue.Queue()
 
 DEMO = """
 <!DOCTYPE html>
@@ -114,12 +118,23 @@ def render_overlay(url, channel="program"):
                 while not stop.is_set():
                     started = time.perf_counter()
                     try:
+                        # The revision/id is read BEFORE and AFTER the PNG.
+                        # An in-flight React render cannot be confused with the
+                        # frame that is actually staged or emitted.
+                        marker = ("data-direct-preview-revision"
+                                  if channel == "preview" else "data-direct-take-id")
+                        selector = "[%s]" % marker
+                        before = page.locator(selector).get_attribute(marker, timeout=2500)
                         data = page.screenshot(
                             type="png",
                             omit_background=True,
                             animations="allow",
                             timeout=10000,
                         )
+                        after = page.locator(selector).get_attribute(marker, timeout=2500)
+                        if before != after:
+                            # Snapshot changed while screenshot was being captured.
+                            continue
                         img = cv2.imdecode(
                             np.frombuffer(data, dtype=np.uint8),
                             cv2.IMREAD_UNCHANGED,
@@ -144,6 +159,10 @@ def render_overlay(url, channel="program"):
                             if channel == "program":
                                 state["captures"] += 1
                             state[error_slot] = None
+                            if channel == "preview":
+                                state["preview_revision"] = int(after) if after and after.isdigit() else -1
+                            else:
+                                state["program_rendered_take_id"] = after or ""
 
                     except Exception as exc:
                         if stop.is_set():
@@ -185,9 +204,22 @@ def listen_commands():
     """Control cooperativo desde Electron; no cerrar Playwright desde otro hilo."""
     try:
         for line in sys.stdin:
-            if line.strip().upper() == "STOP":
+            parts = line.strip().split()
+            if not parts:
+                continue
+            if parts[0].upper() == "STOP":
                 stop.set()
                 return
+            if parts[0].upper() == "TAKE" and len(parts) == 3:
+                try:
+                    revision = int(parts[1])
+                    take_id = parts[2].lower()
+                    if revision >= 0 and len(take_id) == 32 and all(c in "0123456789abcdef" for c in take_id):
+                        control_queue.put(("TAKE", revision, take_id))
+                except ValueError:
+                    pass
+            elif parts[0].upper() == "ROLLBACK" and len(parts) == 2:
+                control_queue.put(("ROLLBACK", -1, parts[1].lower()))
     except (OSError, ValueError):
         return
 
@@ -284,6 +316,10 @@ def main():
             counter = 0
             last_status = time.monotonic()
             last_counter = 0
+            active_override = None
+            override_take_id = None
+            pending_take_ack = None
+            pending_rollback_ack = None
 
             while not stop.is_set():
                 if cap is not None:
@@ -303,11 +339,44 @@ def main():
                 with lock:
                     overlay = state["overlay"]
                     preview_overlay = state["preview_overlay"]
+                    preview_revision = state["preview_revision"]
+                    browser_take_id = state["program_rendered_take_id"]
                     captures = state["captures"]
                     error = state["error"]
 
-                if overlay is not None:
-                    fg, inverse = overlay
+                # Control commands are consumed ONLY in the single camera
+                # output thread. This keeps output switching frame-aligned.
+                while True:
+                    try:
+                        action, requested_revision, request_id = control_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    if action == "TAKE":
+                        if preview_overlay is None or preview_revision != requested_revision:
+                            print("STDQ_TAKE_NACK", request_id, "PREVIEW_NOT_READY", flush=True)
+                        elif active_override is not None:
+                            print("STDQ_TAKE_NACK", request_id, "TAKE_BUSY", flush=True)
+                        else:
+                            active_override = preview_overlay
+                            override_take_id = request_id
+                            pending_take_ack = request_id
+                    elif action == "ROLLBACK":
+                        if override_take_id == request_id:
+                            active_override = None
+                            override_take_id = None
+                        pending_rollback_ack = request_id
+
+                # The React Program worker eventually receives committed live
+                # flags plus this same take ID. Only then may its composition
+                # replace the temporary Preview snapshot without reverting
+                # visible content between engine ACK and station commit.
+                if active_override is not None and browser_take_id == override_take_id:
+                    active_override = None
+                    override_take_id = None
+
+                applied_overlay = active_override if active_override is not None else overlay
+                if applied_overlay is not None:
+                    fg, inverse = applied_overlay
                     rgb = np.clip(
                         rgb.astype(np.float32) * inverse + fg,
                         0, 255,
@@ -315,6 +384,12 @@ def main():
 
                 cam.send(rgb)
                 counter += 1
+                if pending_take_ack is not None:
+                    print("STDQ_TAKE_ACK", pending_take_ack, counter, flush=True)
+                    pending_take_ack = None
+                if pending_rollback_ack is not None:
+                    print("STDQ_ROLLBACK_ACK", pending_rollback_ack, counter, flush=True)
+                    pending_rollback_ack = None
 
                 # Every previewed frame was successfully submitted to Unity.
                 # JPEG monitoring is intentionally capped near 7.5fps to avoid
