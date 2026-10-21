@@ -18,8 +18,8 @@ class HtmlCaptureProfileTests(unittest.TestCase):
         preview = html_capture_profile(1080, "preview")
         self.assertEqual(program["viewport"], (1920, 1080))
         self.assertEqual(preview["viewport"], (1920, 1080))
-        self.assertIsNone(program["style"])
-        self.assertIsNone(preview["style"])
+        self.assertEqual(program["device_scale_factor"], 1)
+        self.assertEqual(preview["screenshot_scale"], "css")
         self.assertEqual(program["interval"], 0.1)
         self.assertEqual(preview["interval"], 0.75)
 
@@ -27,12 +27,9 @@ class HtmlCaptureProfileTests(unittest.TestCase):
         for channel in ("program", "preview"):
             with self.subTest(channel=channel):
                 profile = html_capture_profile(720, channel)
-                self.assertEqual(profile["viewport"], (W, H))
-                self.assertTrue(profile["style"])
-                self.assertIn("scale(0.6666666666666666)", profile["style"])
-                self.assertIn("transform-origin:0 0", profile["style"])
-                self.assertIn("data-direct-take-id" if channel == "program"
-                              else "data-direct-preview-revision", profile["style"])
+                self.assertEqual(profile["viewport"], (RENDER_W, RENDER_H))
+                self.assertAlmostEqual(profile["device_scale_factor"], 2 / 3)
+                self.assertEqual(profile["screenshot_scale"], "device")
         self.assertEqual((RENDER_W, RENDER_H), (1920, 1080))
 
     def test_rejects_invalid_output_profile_and_unknown_channel(self):
@@ -49,7 +46,8 @@ class HtmlCaptureProfileTests(unittest.TestCase):
             try:
                 profile = html_capture_profile(720, "preview")
                 context = browser.new_context(
-                    viewport={"width": W, "height": H}, device_scale_factor=1,
+                    viewport={"width": RENDER_W, "height": RENDER_H},
+                    device_scale_factor=profile["device_scale_factor"],
                 )
                 try:
                     page = context.new_page()
@@ -68,12 +66,13 @@ class HtmlCaptureProfileTests(unittest.TestCase):
                       </div>
                     </body></html>
                     """)
-                    page.add_style_tag(content=profile["style"])
                     rect = page.locator("#sample").bounding_box()
-                    self.assertAlmostEqual(rect["x"], 80, delta=1)
-                    self.assertAlmostEqual(rect["y"], 60, delta=1)
-                    self.assertAlmostEqual(rect["width"], 200, delta=1)
-                    self.assertAlmostEqual(rect["height"], 160, delta=1)
+                    self.assertAlmostEqual(rect["x"], 120, delta=1)
+                    self.assertAlmostEqual(rect["y"], 90, delta=1)
+                    self.assertAlmostEqual(rect["width"], 300, delta=1)
+                    self.assertAlmostEqual(rect["height"], 240, delta=1)
+                    self.assertEqual(page.evaluate("innerWidth"), 1920)
+                    self.assertEqual(page.evaluate("innerHeight"), 1080)
                     self.assertEqual(
                         page.locator("[data-direct-preview-revision]").get_attribute(
                             "data-direct-preview-revision"
@@ -81,6 +80,7 @@ class HtmlCaptureProfileTests(unittest.TestCase):
                     )
                     data = page.screenshot(
                         type="png", omit_background=True, animations="allow",
+                        scale=profile["screenshot_scale"],
                     )
                     image = cv2.imdecode(
                         np.frombuffer(data, np.uint8), cv2.IMREAD_UNCHANGED,
