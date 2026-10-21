@@ -156,6 +156,10 @@ else {
         staticDir: path.join(__dirname,'dist'),
         directStatus: () => direct.status(),
         directMonitor: () => direct.monitorToken ? {port:direct.monitorPort,token:direct.monitorToken} : null,
+        directTake: {
+          take: (revision,takeId) => direct.take(revision,takeId),
+          rollback: takeId => direct.rollbackTake(takeId),
+        },
       });
       createWindow();
       createTray();
