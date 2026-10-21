@@ -376,7 +376,7 @@ def main():
             counter = 0
             last_status = time.monotonic()
             last_counter = 0
-            stat_ms = {"camera":0.0,"blend":0.0,"send":0.0,"monitors":0.0,"sleep":0.0}
+            stat_ms = {"camera":0.0,"read":0.0,"convert":0.0,"blend":0.0,"send":0.0,"monitors":0.0,"sleep":0.0}
             stat_frames = 0
             active_override = None
             override_take_id = None
@@ -390,6 +390,8 @@ def main():
                 else:
                     ok, bgr = False, None
 
+                capture_read_end = time.perf_counter()
+                stat_ms["read"] += (capture_read_end-t_camera)*1000.0
                 if ok and bgr is not None:
                     if bgr.shape[:2] != (H, W):
                         bgr = cv2.resize(bgr, (W, H))
@@ -398,7 +400,9 @@ def main():
                     rgb = np.empty((H, W, 3), dtype=np.uint8)
                     rgb[:] = (19, 22, 30)
 
-                stat_ms["camera"] += (time.perf_counter()-t_camera)*1000.0
+                capture_convert_end = time.perf_counter()
+                stat_ms["convert"] += (capture_convert_end-capture_read_end)*1000.0
+                stat_ms["camera"] += (capture_convert_end-t_camera)*1000.0
                 t_blend = time.perf_counter()
                 # Keep a separate uncomposited physical frame ONLY when the
                 # Preview JPEG monitor needs it (once per 8 broadcast frames).
