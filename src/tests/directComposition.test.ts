@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {TEMPLATE} from './fixtures/bannerTemplate.ts';
-import {selectDirectProgramGraphics} from '../utils/directComposition.ts';
+import {selectDirectProgramGraphics,selectDirectPreviewGraphics} from '../utils/directComposition.ts';
 
 test('Direct Program selects visible published graphics in stable paint order',()=>{
   const banner={...TEMPLATE,visibleInOBS:true,animationReplay:2};
@@ -24,4 +24,15 @@ test('Direct Program does not receive a draft, and hidden graphics never render'
   assert.notEqual(result[0].content.phrase,draft.banner.content.phrase);
   const hidden=selectDirectProgramGraphics({banner:{...published.banner,visibleInOBS:false}} as any,{});
   assert.equal(hidden.length,0);
+});
+
+test('Preview stages hidden published graphics without changing Program and without exposing drafts',()=>{
+  const published:any={banner:{...TEMPLATE,content:{phrase:'PUBLISHED'},visibleInOBS:false}};
+  const preview=selectDirectPreviewGraphics(published,{},['banner']);
+  const program=selectDirectProgramGraphics(published,{});
+  assert.equal(preview.length,1);
+  assert.equal(preview[0].visibleInOBS,true,'Preview renders staged graphic');
+  assert.equal(preview[0].content.phrase,'PUBLISHED');
+  assert.equal(program.length,0,'Program must remain unchanged by staging');
+  assert.equal(published.banner.visibleInOBS,false,'Preview is immutable');
 });
