@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { ComponentType, CountdownState, CustomComponentRegistry, EditorialComponentConfig } from '../../types';
 import { SharedStation } from '../../services/sharedStation';
 import { StorageService } from '../../services/storage';
-import { INITIAL_COMPONENTS } from '../../constants/initialData';
+import { selectDirectProgramGraphics } from '../../utils/directComposition';
 import { GraphicComponentRenderer } from './GraphicComponentRenderers';
 import { BrandLogoLayer } from './BrandLogoLayer';
 import { useLayerTimeline } from '../../hooks/useLayerTimeline';
@@ -73,11 +73,7 @@ export function DirectCompositeRenderer() {
   const effectiveCountdown={...countdown,remainingSeconds:remaining};
   // Deterministic stacking: built-in catalogue order, then custom graphics.
   // Per-scene order is an upcoming Production Controller responsibility.
-  const graphics=[...Object.values(components),...Object.values(custom)]
-    .filter(config=>config&&config.visibleInOBS)
-    .map(config=>config.type==='logo-bug'&&!config.branding
-      ? {...config,branding:INITIAL_COMPONENTS['logo-bug'].branding}
-      : config);
+  const graphics=selectDirectProgramGraphics(components,custom);
   return <div className="fixed inset-0 w-[1920px] h-[1080px] pointer-events-none select-none bg-transparent overflow-hidden">
     <AnimatePresence>
       {graphics.map(config=>
