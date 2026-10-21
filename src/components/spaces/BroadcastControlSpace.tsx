@@ -332,11 +332,13 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between">
             <span className="text-xs text-slate-400">{directProgramRunning?'Composición de ensayo independiente · No enviada al aire':'Listo para enviar al aire'}</span>
             <button
-              disabled={directProgramRunning || !obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
-              onClick={() => onExecuteTransition(activeTransition)}
+              disabled={directProgramRunning
+                ? transitionPending || scenePending || previewPreparing!==null
+                : !obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
+              onClick={() => onExecuteTransition(directProgramRunning?'Cut':activeTransition)}
               className="disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all"
             >
-              <span>{directProgramRunning?'Take nativo pendiente':'Transición a Program'}</span>
+              <span>{directProgramRunning?(transitionPending?'Aplicando Cut…':'TAKE · CUT'):'Transición a Program'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -417,15 +419,22 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
       </div>
 
       {/* OBS reports available transition names. Never send guessed presets. */}
-      <section className="p-5 glass-panel rounded-2xl border border-white/10 space-y-3" aria-label="Transiciones OBS">
+      <section className="p-5 glass-panel rounded-2xl border border-white/10 space-y-3" aria-label={directProgramRunning?'Transiciones nativas':'Transiciones OBS'}>
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white">Transiciones de OBS</h3>
-            <p className="text-xs text-slate-400">Solo se muestran las transiciones realmente instaladas. Un clic ejecuta una transición confirmada.</p>
+            <h3 className="text-sm font-bold text-white">{directProgramRunning?'Transiciones nativas':'Transiciones de OBS'}</h3>
+            <p className="text-xs text-slate-400">{directProgramRunning?'RC4B: Cut envía Preview a Unity Camera y exige confirmación del fotograma. Transiciones animadas pendientes.':'Solo se muestran las transiciones realmente instaladas. Un clic ejecuta una transición confirmada.'}</p>
           </div>
-          <span className="text-[11px] text-slate-400 font-mono">{obsStatus.studioMode ? 'MODO ESTUDIO ACTIVO' : 'ACTIVA MODO ESTUDIO'}</span>
+          <span className="text-[11px] text-slate-400 font-mono">{directProgramRunning?'UNITY CAMERA · CORTE DIRECTO':obsStatus.studioMode ? 'MODO ESTUDIO ACTIVO' : 'ACTIVA MODO ESTUDIO'}</span>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
+          {directProgramRunning ? (
+            <button type="button"
+              disabled={transitionPending || scenePending || previewPreparing!==null}
+              onClick={()=>onExecuteTransition('Cut')}
+              className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >{transitionPending?'Confirmando fotograma…':'Ejecutar CUT a Program'}</button>
+          ) : (<>
           <select
             value={activeTransition}
             onChange={event => setSelectedTransition(event.target.value)}
@@ -441,9 +450,10 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             onClick={() => onExecuteTransition(activeTransition)}
             className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >{transitionPending ? 'Transición en curso…' : `Ejecutar ${activeTransition || 'transición'}`}</button>
+          </>)}
         </div>
-        {!obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
-        {obsStatus.studioMode && availableTransitions.length === 0 && <p className="text-amber-300 text-xs">No se recibió el catálogo de transiciones de OBS. Comprueba la conexión o vuelve a conectar.</p>}
+        {!directProgramRunning && !obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
+        {!directProgramRunning && obsStatus.studioMode && availableTransitions.length === 0 && <p className="text-amber-300 text-xs">No se recibió el catálogo de transiciones de OBS. Comprueba la conexión o vuelve a conectar.</p>}
         <div role="status" aria-live="polite" className="text-xs text-slate-300 border-t border-white/10 pt-2">{liveFeedback}</div>
       </section>
 
@@ -509,7 +519,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length} componentes)</h3>
-              <p className="text-xs text-slate-400">{directProgramRunning ? 'Prepara gráficas en el monitor Preview sin afectar Al Aire ni StreamYard. Take nativo sigue bloqueado hasta su integración.' : 'Detección automática por URL confirmada de OBS. Los vínculos manuales se verifican antes de activar una gráfica.'}</p>
+              <p className="text-xs text-slate-400">{directProgramRunning ? 'Prepara gráficas en el monitor Preview sin afectar Al Aire ni StreamYard. Take nativo disponible: Cut. Animaciones de transición pendientes.' : 'Detección automática por URL confirmada de OBS. Los vínculos manuales se verifican antes de activar una gráfica.'}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
               {!directProgramRunning && <button onClick={() => setEditLinks(!editLinks)} className="border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10" aria-expanded={editLinks}>{editLinks ? 'Cerrar vínculos' : 'Vincular fuentes OBS'}</button>}
@@ -528,7 +538,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               <>
                 <span><strong>{previewSelection.ids.length}</strong> preparadas en Preview</span>
                 <span><strong>{[...Object.values(components),...Object.values(customComponents)].filter(c=>c.visibleInOBS).length}</strong> marcadas en Program</span>
-                <span>Take nativo pendiente</span>
+                <span>Cut nativo disponible</span>
               </>
             ) : (
               <>
