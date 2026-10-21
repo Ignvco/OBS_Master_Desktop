@@ -1,0 +1,53 @@
+# RC5M — Preview y Program fluidos dentro de OBS MASTER (prueba Windows)
+
+**Estado:** rama experimental `v5-monitor-async`, basada en `v5-perf`. El usuario validó RC5 HD como salida Unity/StreamYard fluida a ~29 FPS; los monitores internos están limitados por código a ~7,5 FPS Program y ~3,75 FPS Preview. **Este cambio todavía NO ha sido validado en Windows.** No fusionar a `v5-perf`, `v5-native` ni `main` hasta QA.
+
+## Motivo y solución acotada
+
+Anteriormente `direct_graphics.py` generaba JPEG de Program cada 4 fotogramas y Preview cada 8, realizando `cv2.resize`, alfa y `cv2.imencode` **dentro del hilo de salida Unity**. Esta cadencia reducida explica la falta de fluidez en los monitores a pesar de StreamYard fluido.
+
+Nuevo `desktop-app/lab/direct_monitor_encoder.py`:
+- Un worker de JPEG **Program** independiente y un worker **Preview** independiente, con objetivo inicial **15 FPS cada uno**, tamaño 640×360 y calidad JPEG 68.
+- Cola de **un solo frame pendiente por monitor**, reemplaza los frames viejos si la compresión se retrasa (último estado, no se acumula latencia).
+- La imagen Program que recibe el worker ya fue enviada exitosamente con `cam.send(rgb)`; codificación tardía no modifica Unity.
+- Preview recibe **una copia del fotograma físico anterior al blend Program**, junto a su propia captura HTML; compone y codifica **en el worker de Preview**, nunca altera Program/StreamYard.
+- Sólo copia el fotograma original cuando el monitor Preview necesita muestra nueva.
+- Nueva telemetría `STDQ_MONITOR program=...fps preview=...fps` cada 10 s, además de `STDQ_PERF` y `Salida`.
+- El monitor Python HTTP sigue atendiendo únicamente 127.0.0.1 con token por sesión; el proxy Electron, el Panel En Vivo, Preview selection y el protocolo Take/ACK no se han tocado.
+
+**Límite:** 15 FPS es el objetivo inicial, no una promesa; puede variar si CPU/GPU saturadas. La cámara Unity sigue apuntando a 30 FPS. `html_program/html_preview` (captura Playwright y Motion) sigue aproximadamente 3–4 capturas/s y se optimizará *por separado* sin sacrificar fidelidad gráfica.
+
+## Ejecutar sin tocar versión que funciona
+
+1. Detener Unity Camera y cerrar Electron **desde la bandeja**. Liberar webcam en StreamYard, no emitir públicamente.
+2. Conservar el clon `OBS-Master-v5-perf` intacto; este nuevo ensayo vive en una carpeta separada. Antes de probar, respaldar los datos de desarrollo `%APPDATA%\STDQ OBS Master V5 Native Dev\.stdq-runtime`, pues las dos ramas comparten el perfil de trabajo aunque no el código.
+3. CMD:
+   ```bat
+   cd /d "%USERPROFILE%\Desktop"
+   git clone --branch v5-monitor-async --single-branch https://github.com/Ignvco/OBS_Master_Desktop.git OBS-Master-v5-monitor-async
+   cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-monitor-async"
+   INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
+   ```
+4. El BAT prueba offline los trabajadores de JPEG y el aislamiento, luego ejecuta `INICIAR_RC5_HD_MJPG_WINDOWS.bat` para lint/core/build/server/py_compile y sincronización exacta `desktop-app/dist`. Configura `STDQ_DIRECT_CAMERA_FOURCC=MJPG`, `STDQ_DIRECT_MONITOR_FPS=15`, `STDQ_DIRECT_MONITORS=1`, `STDQ_DIRECT_DEBUG=1`.
+5. En Electron iniciar Unity Camera. Verificar las líneas:
+   ```text
+   Entrada reportada: 1280x720 / 30.0 FPS configurados / FourCC MJPG
+   Monitores internos: 2 JPEG workers async; objetivo 15 FPS cada uno
+   Salida: ... FPS | Capturas HTML: ...
+   STDQ_MONITOR program=...fps preview=...fps | ...
+   STDQ_PERF ... monitors=...ms
+   ```
+6. Mover manos/cabeza y observar los **dos monitores**. Comparar **15 FPS previstos** frente al anterior 7,5/3,75. Por separado, comprobar que StreamYard continúa fluido cercano a 30 FPS.
+7. Preparar Banner y Lower Third en Preview y verificar que no llegan a Program/StreamYard anticipadamente. Ejecutar **TAKE · CUT** y confirmar ACK y resultado en StreamYard. Retirar una gráfica en Preview y repetir Cut, sin artefactos.
+8. Dejar 10–15 min inicialmente; si funciona, probar >=30 min, 5–10 Cut, cerrar y reiniciar cámara 5 veces sin procesos huérfanos. Comparar `STDQ_MONITOR` + `Salida` antes/después.
+
+## Criterios de éxito
+
+- La webcam Unity/StreamYard mantiene 720p y ~29–30 FPS (sin degradación sostenida del benchmark anterior).
+- Program y Preview internos muestran movimiento más fluido que 7,5/3,75 FPS; idealmente ~12–15 FPS cada uno sin congelarse.
+- `STDQ_MONITOR` reporta tasas aproximadas de generación JPEG y eventuales `dropped` si la CPU no alcanza. Los descartes acotados son preferibles a latencia acumulada, pero tasas bajas persistentes requieren profiling.
+- `TAKE · CUT`, estado Preview aislado, publicación y Motion no presentan regresiones.
+- Stop y reinicio ordenado.
+- Si alguna validación falla, **cerrar completamente la app** y volver a abrir el clon `OBS-Master-v5-perf` mediante `INICIAR_RC5_HD_MJPG_WINDOWS.bat`. Ningún cambio ha sido aplicado a su rama.
+
+**No dar por aprobado el incremento de monitores solo por `Salida: 30 FPS`**: necesitamos confirmar explícitamente las tasas `STDQ_MONITOR` y percepción en En Vivo.
