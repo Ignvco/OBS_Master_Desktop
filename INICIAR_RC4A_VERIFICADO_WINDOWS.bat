@@ -39,6 +39,15 @@ echo [5/6] Compilando servidor Electron...
 call npm run desktop:server
 if errorlevel 1 goto :fail
 
+echo [PY] Verificando el motor Unity Camera RC4B...
+set "PYTHON_LAB=%USERPROFILE%\Documents\OBS-MASTER-DIRECT-LAB\.venv312clean\Scripts\python.exe"
+if not exist "%PYTHON_LAB%" (
+  echo ERROR: No encuentro el Python validado del laboratorio en Documentos.
+  goto :fail
+)
+"%PYTHON_LAB%" -m py_compile "%CD%\desktop-app\lab\direct_graphics.py" "%CD%\desktop-app\lab\direct_monitor.py"
+if errorlevel 1 goto :fail
+
 echo [6/6] Sincronizando interfaz compilada con Electron...
 if not exist "dist\index.html" (echo ERROR: No existe dist\index.html& goto :fail)
 robocopy "%CD%\dist" "%CD%\desktop-app\dist" /MIR /NFL /NDL /NJH /NJS /NC /NS
@@ -47,6 +56,8 @@ if errorlevel 8 (echo ERROR: Fallo la copia a desktop-app\dist& goto :fail)
 echo.
 echo Verificando marcador de nueva interfaz...
 node -e "const fs=require('fs'),p=require('path');const d='desktop-app/dist/assets';if(!fs.existsSync(d))process.exit(2);const names=fs.readdirSync(d).filter(n=>n.endsWith('.js'));const ok=names.some(n=>fs.readFileSync(p.join(d,n),'utf8').includes('Preparar Preview'));if(!ok){console.error('ERROR: el build servido no contiene Preparar Preview. Verifica git pull y npm run build.');process.exit(3)}console.log('OK: Electron contiene Preparar Preview (RC4A)');"
+if errorlevel 1 goto :fail
+node -e "const fs=require('fs'),p=require('path');const d='desktop-app/dist/assets';const ok=fs.readdirSync(d).filter(n=>n.endsWith('.js')).some(n=>fs.readFileSync(p.join(d,n),'utf8').includes('Ejecutar CUT a Program'));if(!ok){console.error('ERROR: no esta incluido el Take nativo RC4B');process.exit(3)}console.log('OK: Build contiene TAKE nativo RC4B');"
 if errorlevel 1 goto :fail
 
 echo.
