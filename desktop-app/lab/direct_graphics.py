@@ -21,6 +21,7 @@ import pyvirtualcam
 from playwright.sync_api import sync_playwright
 from direct_monitor import ProgramMonitor
 from direct_monitor_encoder import AsyncMonitorEncoder
+from direct_html_capture import HtmlFrameCapture
 
 W, H, FPS = 1280, 720, 30
 RENDER_W, RENDER_H = 1920, 1080
@@ -179,17 +180,22 @@ def render_overlay(url, channel="program"):
     error_slot = "error" if channel == "program" else "preview_error"
     height = int(os.environ.get("STDQ_DIRECT_HTML_CAPTURE", "1080"))
     profile = html_capture_profile(height, channel)
+    html_engine = os.environ.get("STDQ_DIRECT_HTML_ENGINE", "playwright").strip().lower()
+    if html_engine not in ("playwright", "cdp"):
+        raise ValueError("STDQ_DIRECT_HTML_ENGINE must be playwright or cdp")
     print(
         f"HTML {channel}: CSS viewport={profile['viewport'][0]}x{profile['viewport'][1]} "
         f"DPR={profile['device_scale_factor']:.4f} "
         f"intervalo={profile['interval'] * 1000:.0f}ms "
-        f"modo={'rasterizado 720p' if height == 720 else 'original 1080p'}",
+        f"modo={'rasterizado 720p' if height == 720 else 'original 1080p'} "
+        f"captura={html_engine}",
         flush=True,
     )
     try:
         with sync_playwright() as playwright:
             browser = None
             context = None
+            capture = None
             try:
                 browser = playwright.chromium.launch(
                     channel="msedge",
@@ -213,6 +219,10 @@ def render_overlay(url, channel="program"):
                     print("Usando grafica de demostracion.", flush=True)
                     page.set_content(DEMO)
 
+                capture = HtmlFrameCapture(
+                    page, engine=html_engine, scale=profile["screenshot_scale"],
+                ).open()
+
                 while not stop.is_set():
                     started = time.perf_counter()
                     try:
@@ -224,13 +234,7 @@ def render_overlay(url, channel="program"):
                         selector = "[%s]" % marker
                         before = page.locator(selector).get_attribute(marker, timeout=2500)
                         screenshot_started = time.perf_counter()
-                        data = page.screenshot(
-                            type="png",
-                            omit_background=True,
-                            animations="allow",
-                            scale=profile["screenshot_scale"],
-                            timeout=10000,
-                        )
+                        data = capture.screenshot()
                         screenshot_ms = (time.perf_counter() - screenshot_started) * 1000.0
                         after = page.locator(selector).get_attribute(marker, timeout=2500)
                         if before != after:
@@ -282,7 +286,14 @@ def render_overlay(url, channel="program"):
                     stop.wait(max(0, profile["interval"] - elapsed))
 
             finally:
-                # CRITICO: cerrar ANTES de salir de sync_playwright().
+                # CRITICO: cerrar CDP, contexto y navegador dentro de
+                # sync_playwright(); nunca desde el hilo del Unity Camera.
+                if capture is not None:
+                    try:
+                        capture.close()
+                    except Exception as exc:
+                        if not stop.is_set():
+                            print("Aviso al cerrar captura HTML:", exc, flush=True)
                 if context is not None:
                     try:
                         context.close()
