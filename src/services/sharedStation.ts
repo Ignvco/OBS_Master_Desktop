@@ -9,6 +9,7 @@ export interface SharedStationState {
   draftCustomComponents?: CustomComponentRegistry;
   publicationHistory?: PublicationHistory;
   countdown?: CountdownState;
+  directTakeId?: string;
 }
 
 /**
