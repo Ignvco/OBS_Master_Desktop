@@ -18,7 +18,7 @@ function createDirectSupervisor() {
   const lab = process.env.STDQ_DIRECT_LAB || path.join(app.getPath('documents'), 'OBS-MASTER-DIRECT-LAB');
   direct = new DirectProcess({
     python: process.env.STDQ_DIRECT_PYTHON || path.join(lab,'.venv312clean','Scripts','python.exe'),
-    script: process.env.STDQ_DIRECT_SCRIPT || path.join(__dirname, 'lab', 'direct_graphics.py'),
+    script: process.env.STDQ_DIRECT_SCRIPT || (app.isPackaged ? path.join(process.resourcesPath,'direct-engine','direct_graphics.py') : path.join(__dirname,'lab','direct_graphics.py')),
     url:'http://127.0.0.1:3000/?overlay=lower-third',
     log: message => { if (process.env.STDQ_DIRECT_DEBUG==='1') console.log('[Direct]',message.trim()); },
   });
