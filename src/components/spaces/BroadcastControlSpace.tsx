@@ -457,7 +457,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               <span className="text-[11px] font-mono text-slate-400">{obsStatus.scenes.length} ESCENAS</span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Clic para preparar en Preview. En modo no-estudio conmuta directamente.
+              {directProgramRunning ? 'La preparación de gráficas se realiza desde los botones Preparar Preview de la derecha. Las escenas nativas aún están en desarrollo.' : 'Clic para preparar en Preview. En modo no-estudio conmuta directamente.'}
             </p>
           </div>
 
@@ -524,11 +524,21 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {directProgramRunning && previewOperationError && <p className="text-xs text-rose-300" role="alert">Preview: {previewOperationError}</p>}
           <div className="live-connection-summary" role="status" aria-live="polite">
-            <span><strong>{report.verified}</strong> detectadas</span>
-            <span><strong>{report.live}</strong> fuentes visibles</span>
-            <span className={report.missing?'text-amber-300':''}><strong>{report.missing}</strong> sin vincular</span>
-            {report.ambiguous>0&&<span className="text-rose-300"><strong>{report.ambiguous}</strong> ambiguas</span>}
-            {!directProgramRunning && <label><input type="checkbox" checked={showOnlyLinked} onChange={e=>setShowOnlyLinked(e.target.checked)}/> Solo detectadas</label>}
+            {directProgramRunning ? (
+              <>
+                <span><strong>{previewSelection.ids.length}</strong> preparadas en Preview</span>
+                <span><strong>{[...Object.values(components),...Object.values(customComponents)].filter(c=>c.visibleInOBS).length}</strong> marcadas en Program</span>
+                <span>Take nativo pendiente</span>
+              </>
+            ) : (
+              <>
+                <span><strong>{report.verified}</strong> detectadas</span>
+                <span><strong>{report.live}</strong> fuentes visibles</span>
+                <span className={report.missing?'text-amber-300':''}><strong>{report.missing}</strong> sin vincular</span>
+                {report.ambiguous>0&&<span className="text-rose-300"><strong>{report.ambiguous}</strong> ambiguas</span>}
+                <label><input type="checkbox" checked={showOnlyLinked} onChange={e=>setShowOnlyLinked(e.target.checked)}/> Solo detectadas</label>
+              </>
+            )}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
             {[...componentLabels, ...Object.values(customComponents).map(config=>({type:config.instanceId!,label:config.name,icon:'✦'}))].map((c) => {
@@ -542,8 +552,10 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               const pending = pendingComponents.includes(c.type);
               const previewReady = previewSelection.ids.includes(c.type);
               const unavailable = !obsStatus.connected || !program || !source;
-              const isLive = !!config.visibleInOBS && !!source?.enabled;
-              const status = !obsStatus.connected ? 'OBS DESCONECTADO'
+              const isLive = directProgramRunning ? !!config.visibleInOBS : !!config.visibleInOBS && !!source?.enabled;
+              const status = directProgramRunning
+                ? previewReady && isLive ? 'PREVIEW + PROGRAM' : previewReady ? 'PREPARADA EN PREVIEW' : isLive ? 'EN PROGRAM' : 'LISTA PARA PREPARAR'
+                : !obsStatus.connected ? 'OBS DESCONECTADO'
                 : !program ? 'SIN ESCENA PROGRAM'
                 : !source ? matches.length > 1 ? 'VÍNCULO AMBIGUO' : 'FUENTE NO VINCULADA'
                 : pending ? 'APLICANDO…'
@@ -556,7 +568,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                     type="button"
                     disabled={unavailable || pending || transitionPending || scenePending}
                     onClick={() => onToggleComponentVisibility(c.type, linked || source?.name)}
-                    title={source ? `${source.name} · ${obsStatus.currentProgramScene}` : 'Vincula esta gráfica con una fuente de navegador de la escena Program'}
+                    title={directProgramRunning ? 'Utiliza Preparar Preview. El control nativo de Program se activará después de validar Take.' : source ? `${source.name} · ${obsStatus.currentProgramScene}` : 'Vincula esta gráfica con una fuente de navegador de la escena Program'}
                     className={`w-full flex flex-col justify-between min-h-[100px] p-3 rounded-xl border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                       isLive ? 'bg-rose-500/15 border-rose-500/50 text-white shadow-lg shadow-rose-500/15'
                       : 'bg-white/[0.02] border-white/5 hover:border-white/15 text-slate-300'
@@ -583,7 +595,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                     <div><span>Animación</span><strong>{config.animation.preset}</strong></div>
                     <div><span>Entrada / Salida</span><strong>{config.animation.entryDurationMs} / {config.animation.exitDurationMs} ms</strong></div>
                     <div><span>Capas libres</span><strong>{config.layers?.length??0}</strong></div>
-                    <div><span>Fuente OBS</span><strong className="break-all">{source?.name||'Sin vínculo válido'}</strong></div>
+                    {!directProgramRunning && <div><span>Fuente OBS</span><strong className="break-all">{source?.name||'Sin vínculo válido'}</strong></div>}
                   </div>}
                   {config.instanceId && !linked && !source && obsStatus.connected && program && <button type="button" disabled={!!creatingSource} className="text-[10px] w-full mt-1 py-2 border border-orange-400/30 rounded-lg text-orange-200 bg-orange-400/10 hover:bg-orange-400/20 disabled:opacity-40"
                     onClick={async()=>{
@@ -608,7 +620,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               );
             })}
           </div>
-          {editLinks && <p className="text-xs text-amber-200">Si una gráfica aparece como «Fuente no vinculada», agrégala como fuente de navegador a la escena de OBS o selecciona su nombre exacto. Los vínculos se guardan localmente por escena.</p>}
+          {editLinks && !directProgramRunning && <p className="text-xs text-amber-200">Si una gráfica aparece como «Fuente no vinculada», agrégala como fuente de navegador a la escena de OBS o selecciona su nombre exacto. Los vínculos se guardan localmente por escena.</p>}
         </div>
       </div>
     </div>
