@@ -25,7 +25,7 @@ export function createStationHandler(staticDir: string, directStatus?: () => Nat
       const origin=req.headers.origin;
       const referrer=req.headers.referer;
       const site=req.headers['sec-fetch-site'];
-      let trusted=/^(localhost|127\\.0\\.0\\.1|\\[::1\\]):\\d+$/.test(host);
+      let trusted=/^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(host);
       if(origin){try{const parsed=new URL(origin);trusted=trusted&&parsed.host===host&&['http:','https:'].includes(parsed.protocol);}catch{trusted=false;}}
       const sameSite = site==='same-origin' || (!!referrer&&(()=>{
         try{return new URL(referrer).host===host;}catch{return false;}
