@@ -115,3 +115,22 @@ test('V4.2: integración Windows — historial gestionable y estado persistido s
   assert.equal(afterPublish.components.banner.content.phrase,'Versión ensayada');
   assert.equal(afterPublish.publicationHistory.banner.revisions.length,1,'publicar no genera historial');
 });
+
+test('native Direct status uses the real supervisor, not a simulated camera flag', async()=>{
+  const nativeStatus={state:'running',pid:4321,error:null,camera:0,url:'http://127.0.0.1:3000/?overlay=direct-program'};
+  const nativeServer=createServer(createStationHandler(staticDir,()=>nativeStatus));
+  await new Promise<void>(resolve=>nativeServer.listen(0,'127.0.0.1',resolve));
+  const addr=nativeServer.address();
+  const nativeBase=`http://127.0.0.1:${typeof addr==='object'&&addr?addr.port:0}`;
+  try {
+    const status=await fetch(nativeBase+'/api/direct/status');
+    assert.equal(status.status,200);
+    assert.deepEqual(await status.json(),nativeStatus);
+    const blocked=await fetch(nativeBase+'/api/direct/status',{headers:{Origin:'https://another-site.example'}});
+    assert.equal(blocked.status,403);
+    const unsupported=await fetch(nativeBase+'/api/direct/status',{method:'POST'});
+    assert.equal(unsupported.status,405);
+  }finally{
+    await new Promise<void>(resolve=>nativeServer.close(()=>resolve()));
+  }
+});
