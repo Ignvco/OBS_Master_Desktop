@@ -23,10 +23,50 @@ const FIELDS = new Set(['episode', 'components', 'customComponents', 'draftCompo
 const FILE = resolve(DATA_DIRECTORY, 'station.json');
 let cached: Record<string, unknown> | null = null;
 const subscribers = new Set<ServerResponse>();
+let nativeTakeBusy = false;
+
+/** Exclusive on-air transaction: UI/station changes cannot race the video engine. */
+export function beginNativeTake(expectedRevision:number):{revision:number;ids:string[]} {
+  if(nativeTakeBusy)throw new Error('Ya hay una transición en curso');
+  if(recoveryBusy)throw new Error('La estación está en mantenimiento');
+  const preview=getDirectPreview();
+  if(!Number.isSafeInteger(expectedRevision)||expectedRevision!==preview.revision)
+    throw new Error('La composición Preview cambió; actualiza antes de llevarla al aire');
+  const published=load();
+  if(!published||!published.components)throw new Error('No existe un catálogo publicado');
+  const known=new Set([
+    ...Object.keys(published.components as Record<string,unknown>),
+    ...Object.keys((published.customComponents??{}) as Record<string,unknown>),
+  ]);
+  if(preview.ids.some(id=>!known.has(id)))throw new Error('Preview contiene una gráfica no publicada');
+  nativeTakeBusy=true;
+  return {revision:preview.revision,ids:[...preview.ids]};
+}
+export function commitNativeTake(ids:string[],revision:number,takeId:string) {
+  if(!nativeTakeBusy)throw new Error('No hay transición activa');
+  if(!/^[0-9a-f]{32}$/.test(takeId))throw new Error('ID de transición inválido');
+  const current=getDirectPreview();
+  if(current.revision!==revision||JSON.stringify(current.ids)!==JSON.stringify(ids))
+    throw new Error('La selección de Preview cambió durante la transición');
+  const before=load();
+  if(!before||!before.components)throw new Error('El catálogo de Program ya no está disponible');
+  const selected=new Set(ids);
+  const activate=(registry:Record<string,EditorialComponentConfig>)=>
+    Object.fromEntries(Object.entries(registry).map(([id,config])=>[
+      id,config.visibleInOBS===selected.has(id)?config:{...config,visibleInOBS:selected.has(id)}
+    ]));
+  const published=activate(before.components as Record<string,EditorialComponentConfig>);
+  const custom=activate((before.customComponents??{}) as Record<string,EditorialComponentConfig>);
+  const next={...before,components:published,customComponents:custom,directTakeId:takeId};
+  // Do not modify drafts, history, or versions. Publish all operational flags once.
+  save(next);
+}
+export function releaseNativeTake(){nativeTakeBusy=false;}
+
 /** Never send drafts or publication history into the OBS Browser Source stream. */
 function broadcastSnapshot(state: Record<string, unknown> | null): Record<string, unknown> | null {
   if (!state) return null;
-  return Object.fromEntries(['components','customComponents','countdown'].filter(key=>key in state).map(key=>[key,state[key]]));
+  return Object.fromEntries(['components','customComponents','countdown','directTakeId'].filter(key=>key in state).map(key=>[key,state[key]]));
 }
 
 function load(): Record<string, unknown> | null {
@@ -88,12 +128,13 @@ export function stationMiddleware(req: IncomingMessage, res: ServerResponse, nex
   // Maintenance is an exclusive transaction: an autosave, publication, or media
   // mutation must not interleave with a restore and silently overwrite its files.
   // Read-only health/stream requests remain usable during maintenance.
-  if (recoveryBusy && route?.startsWith('/api/station/') && req.method !== 'GET' && req.method !== 'HEAD') {
+  if ((recoveryBusy || nativeTakeBusy) && route?.startsWith('/api/station/') && req.method !== 'GET' && req.method !== 'HEAD') {
     json(res, 423, { error: 'Estación en mantenimiento: espera a que finalice el respaldo o la restauración antes de guardar o publicar.' });
     return;
   }
   if (route === '/api/direct/preview') {
     if (!safeOrigin(req)) { json(res,403,{error:'Origen local requerido'});return; }
+    if (nativeTakeBusy && req.method!=='GET') {json(res,423,{error:'Preview protegido durante la transición'});return;}
     if (req.method==='GET') {json(res,200,{preview:getDirectPreview()});return;}
     if (req.method!=='POST') {json(res,405,{error:'Método no permitido'});return;}
     const origin=req.headers.origin;
