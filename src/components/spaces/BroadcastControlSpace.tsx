@@ -95,7 +95,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   const [selectedTransition, setSelectedTransition] = useState('');
   const [detailGraphic,setDetailGraphic]=useState<string|null>(null);
   const [programMonitorError,setProgramMonitorError]=useState(false);
-  useEffect(()=>{setProgramMonitorError(false);},[directProgramRunning]);
+  const [previewMonitorError,setPreviewMonitorError]=useState(false);
+  useEffect(()=>{setProgramMonitorError(false);setPreviewMonitorError(false);},[directProgramRunning]);
   const program = obsStatus.scenes.find(scene => scene.name === obsStatus.currentProgramScene);
   const programSources = program?.sources || [];
   const bindableSources = listBindableSources(programSources);
@@ -239,32 +240,44 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {/* Monitor Screen Frame (16:9 Aspect Ratio) */}
           <div className="relative aspect-video bg-[#050608] monitor-grid flex items-center justify-center overflow-hidden">
-            {/* Screen Content Mock Representation */}
-            <div className="text-center space-y-2 p-6 z-10">
-              <Tv className="w-10 h-10 text-emerald-400/40 mx-auto" />
-              <div className="text-base font-bold text-white tracking-tight">
-                {obsStatus.currentPreviewScene}
+            {directProgramRunning && !previewMonitorError ? (
+              <img src="/api/direct/preview.mjpg"
+                className="absolute inset-0 w-full h-full object-contain"
+                alt="Señal Preview independiente: cámara física y gráficas preparadas"
+                onError={()=>setPreviewMonitorError(true)}
+              />
+            ) : (
+              <div className="text-center space-y-2 p-6 z-10">
+                <Tv className="w-10 h-10 text-emerald-400/40 mx-auto" />
+                <div className="text-base font-bold text-white tracking-tight">
+                  {directProgramRunning ? 'Monitor Preview temporalmente no disponible' : obsStatus.currentPreviewScene}
+                </div>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  {directProgramRunning ? 'Comprueba que el motor haya iniciado su captura de ensayo. Preview nunca altera Program.' : 'Sin Preview del motor: inicia Unity Camera desde la bandeja.'}
+                </p>
+                {directProgramRunning && previewMonitorError && (
+                  <button type="button" className="text-xs underline text-emerald-300" onClick={()=>setPreviewMonitorError(false)}>
+                    Reintentar Preview
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                {directProgramRunning ? 'Preview nativo pendiente: la señal de Program se mantiene independiente. No se muestran imágenes de ensayo simuladas.' : 'Escena en preparación. Representación esquemática de OBS, no video real.'}
-              </p>
-            </div>
+            )}
 
             {/* Corner Badge */}
             <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/80 border border-emerald-500/30 text-[10px] text-emerald-400 font-mono">
-              STANDBY
+              {directProgramRunning && !previewMonitorError ? 'PREVIEW REAL · ENSAYO AISLADO' : 'STANDBY'}
             </div>
           </div>
 
           {/* Preview Quick Action Footer */}
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-slate-400">Listo para enviar al aire</span>
+            <span className="text-xs text-slate-400">{directProgramRunning?'Composición de ensayo independiente · No enviada al aire':'Listo para enviar al aire'}</span>
             <button
-              disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
+              disabled={directProgramRunning || !obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
               onClick={() => onExecuteTransition(activeTransition)}
               className="disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all"
             >
-              <span>Transición a Program</span>
+              <span>{directProgramRunning?'Take nativo pendiente':'Transición a Program'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
