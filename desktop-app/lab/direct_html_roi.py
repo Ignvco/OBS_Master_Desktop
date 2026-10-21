@@ -52,7 +52,7 @@ STAGE_BOUNDS_JS = r"""(root, markerName) => {
 }"""
 
 
-def roi_plan(metadata, margin=72, max_area_fraction=0.72):
+def roi_plan(metadata, margin=144, max_area_fraction=0.72):
     """Return (clip_or_None, empty).
 
     Clip coordinates are CSS pixels; quantization at 3 CSS pixels makes
