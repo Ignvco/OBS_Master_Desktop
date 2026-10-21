@@ -83,3 +83,35 @@ Cámara física → **Capture Service** → **Scene Compositor** (Preview indepe
 3. Decisiones técnicas para compositor de múltiples overlays y frames Preview/Program, tras medir consumo del laboratorio.
 
 **No se afirma que el motor esté integrado ni que las pruebas de Windows hayan pasado**. Esta fase documenta el estado y bloqueos reales.
+
+
+## Implementación incremental — Motor supervisado RC1 (2026-10-21)
+
+**Cambios aplicados**
+
+- `lab/direct_graphics.py`: acepta orden `STOP` por stdin. Mantiene Unity Capture y cleanup de Playwright dentro del contexto original; de momento capta una página HTML.
+- `desktop-app/lab/direct_graphics.py`: copia para empaquetado, sincronizada con el motor de laboratorio.
+- `desktop-app/direct-process.cjs`: inicia el proceso Python sin shell, captura stdout/stderr, evita dos instancias, envía STOP y espera hasta 35 segundos.
+- `desktop-app/main.cjs`: crea supervisor y agrega comandos **temporales al menú de bandeja**; al salir solicita detención. No crea pestañas ni duplica Panel En Vivo.
+- `desktop-app/package.json`: incluye supervisor y ubica script fuera de app.asar mediante `extraResources`.
+
+**Límites y riesgos**
+
+- Esto es **el primer hito de ciclo de vida**, NO una migración lista para emitir. La UI actual todavía tiene `obsWebSocket` y la salida no se conecta a la vista Preview/Program ni al catálogo de fuentes.
+- Se requiere el Python 3.12 `.venv312clean` validado en `Documents/OBS-MASTER-DIRECT-LAB`; el ejecutable Python y las dependencias NO están empaquetados.
+- Durante la prueba, el nombre de dispositivo en StreamYard sigue siendo **Unity Video Capture**, no OBS MASTER Camera.
+- Si el cierre no responde antes del timeout, la aplicación informa un error. **No matar forzosamente** el proceso por defecto para evitar dejar componentes sin limpieza.
+- No fue posible ejecutar tests de Windows/Node o un instalador en este entorno. Validar localmente antes de usar en producción.
+
+**Prueba manual del primer hito en Windows**
+
+1. Mantener la app v4.2 instalada separada. Respaldar AppData y la carpeta de Direct Lab.
+2. Crear clon limpio `git clone --branch v5-native --single-branch https://github.com/Ignvco/OBS_Master_Desktop.git OBS-Master-v5-native`.
+3. En la raíz: `npm ci`, `npm run lint`, `npm run test:core`, `npm run build`, `npm run desktop:server`.
+4. En `desktop-app`: `npm ci`; `npm start` (usa los artefactos generados de la compilación; si `dist` o `compiled` faltan, replicar el staging del `CREAR_EXE_WINDOWS.bat`).
+5. Cerrar el `direct_graphics.py` externo previamente: solo debe haber una salida Unity Capture activa.
+6. Desde el **ícono de bandeja de OBS MASTER**, usar `Iniciar Unity Camera (laboratorio)`. Abrir StreamYard, seleccionar `Unity Video Capture`, comprobar la señal y lower third.
+7. Desde la misma bandeja usar `Detener Unity Camera`; verificar que se libera webcam y no aparece el error de Playwright.
+8. Repetir al menos 5 veces, incluida salida de Electron mientras la cámara está encendida. Ejecutar 20 ciclos antes de declarar estabilidad.
+
+**Siguiente hito obligatorio**: integración del Production Controller, composición de escenas múltiple, monitores reales Preview/Program, comandos del Panel En Vivo existente, configuración real de entrada/salida y retirada definitiva de OBS WebSocket. No reemplazar simulaciones por estados meramente declarativos.
