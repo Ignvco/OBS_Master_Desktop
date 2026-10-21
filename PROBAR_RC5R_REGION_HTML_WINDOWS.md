@@ -96,3 +96,26 @@ INICIAR_RC5_HTML_REGION_WINDOWS.bat
 ```
 
 Asegurar backup del perfil V5 compartido. Comprobar que el modo ROI registra `STDQ_HTML program=...fps preview=...fps ROI=...%/...%` y no aparece fallback continuo; medir al menos cinco ventanas `Salida / STDQ_MONITOR / STDQ_HTML / STDQ_PERF` y confirmar visual de la cinta, integridad alfa y Take con StreamYard. No fusionar automáticamente con RC5M.
+
+## RC5R — resultado integrado Windows: RECHAZADO por regresión (21-oct-2026)
+
+El usuario ejecutó `INICIAR_RC5_HTML_REGION_WINDOWS.bat` con `STDQ_DIRECT_HTML_ROI=1` y suministró cuatro ventanas de telemetría:
+
+| Ventana | Unity FPS | HTML Program FPS | HTML Preview FPS | ROI Program/Preview | screenshot Program/Preview |
+|---|---:|---:|---:|---|---|
+| 1 | 21,7 | 3,4 | 3,4 | 100% / 100% | 205,5 / 189,5 ms |
+| 2 | 25,6 | 3,3 | 3,3 | 100% / 100% | 201,3 / 184,7 ms |
+| 3 | 17,8 | 2,7 | 2,5 | 100% / 100% | 231,8 / 244,8 ms |
+| 4 | 20,9 | 2,6 | 2,6 | 100% / 100% | 253,3 / 250,4 ms |
+
+Promedio no ponderado salida Unity: **21,5 FPS**, muy inferior a ~29,8 FPS de RC5M. En Program/Preview MJPEG los workers continúan cerca de 14–15fps después de calentar, con 1 frame Preview `dropped` en las muestras 3 y 4, errores 0.
+
+**Hallazgo fundamental:** `ROI=100%/100%` continuamente indica que el ROI planeado no se puede aplicar en las escenas reales. Se está ejecutando evaluación DOM de límites/gráficos y captura **completa**, con overhead, y por tanto se penaliza la salida. No asumir una causa específica sin inspección de los rectángulos reales: puede deberse a elementos fullscreen o a umbral área/densidad/geometría DOM.
+
+**Decisión: NO promover RC5R**. El benchmark aislado con cinta sintética (149,6ms vs 126,8ms, -15,2%) no predice la carga del proyecto real. No realizar otro experimento de recorte DOM con video al aire sin entender los elementos fullscreen e implementar un plan de recuperación que no afecte la señal. Regresar a la carpeta validada:
+```bat
+cd /d "%USERPROFILE%\Desktop\OBS-Master-v5-monitor-async"
+INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
+```
+
+Mantener intacta la estabilidad Unity ~29,8fps y monitores 15fps. **La cinta HTML requiere una arquitectura de animación no dependiente de PNG fullscreen por movimiento** o un método de captura sustancialmente distinto, después de identificación exacta del tipo de cinta y sus propiedades en Content Studio. No mezclar experimentos fallidos a `v5-monitor-async`, `v5-native` ni `main`.
