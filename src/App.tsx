@@ -21,6 +21,8 @@ import { NotificationToast, ToastMessage } from './components/common/Notificatio
 import { MissionControlSpace } from './components/spaces/MissionControlSpace';
 import { PreflightRundownSpace } from './components/spaces/PreflightRundownSpace';
 import { BroadcastControlSpace } from './components/spaces/BroadcastControlSpace';
+import { DirectControlSpace } from './components/spaces/DirectControlSpace';
+import { directVisibilityPatch, directReplayPatch, directHideAllPatch, parseOutputMode } from './utils/directActions';
 import { ContentStudioSpace } from './components/spaces/ContentStudioSpace';
 import { AssetLibrarySpace } from './components/spaces/AssetLibrarySpace';
 import { BroadcastOverlayRenderer } from './components/overlays/BroadcastOverlayRenderer';
@@ -44,6 +46,7 @@ export default function App() {
 
   // Station Application State
   const [activeSpace, setActiveSpace] = useState<NavigationSpace>('inicio');
+  const [outputMode, setOutputMode] = useState(() => parseOutputMode(localStorage.getItem('stdq_output_mode')));
   const [studioFocusGraphic,setStudioFocusGraphic]=useState<string|null>(null);
   const [episode, setEpisode] = useState<EpisodeData>(() => StorageService.loadEpisode());
   const [components, setComponents] = useState<Record<ComponentType, EditorialComponentConfig>>(() =>
@@ -186,6 +189,47 @@ export default function App() {
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  useEffect(() => {
+    localStorage.setItem('stdq_output_mode', outputMode);
+    if (outputMode === 'direct') obsService.disconnect();
+  }, [outputMode]);
+
+  const applyDirectPatch = async (patch: Partial<{components: typeof publishedComponents; customComponents: typeof publishedCustomComponents}>) => {
+    await SharedStation.publish(patch);
+    if (patch.components) {
+      publishedRef.current = patch.components;
+      setPublishedComponents(patch.components);
+      StorageService.saveComponents(patch.components, false);
+    }
+    if (patch.customComponents) {
+      publishedCustomRef.current = patch.customComponents;
+      setPublishedCustomComponents(patch.customComponents);
+      StorageService.saveCustomComponents(patch.customComponents, false);
+    }
+  };
+  const directOperation = async (id: string, action: 'toggle' | 'replay') => {
+    if (pendingLive.current.has(id)) return;
+    pendingLive.current.add(id); setLivePending([...pendingLive.current]);
+    try {
+      const state = {components:publishedRef.current,customComponents:publishedCustomRef.current};
+      const graphic = state.customComponents[id] ?? state.components[id as ComponentType];
+      if (!graphic) throw new Error('Gráfica publicada no disponible');
+      const patch = action === 'replay' ? directReplayPatch(state,id) : directVisibilityPatch(state,id,!graphic.visibleInOBS);
+      await applyDirectPatch(patch);
+      setLiveFeedback(`${graphic.name}: operación ${action === 'replay' ? 'Motion' : 'visibilidad'} guardada en estación local. Comprueba la salida Direct.`);
+    } catch (err) {
+      showToast('error','Direct: operación rechazada',err instanceof Error?err.message:undefined);
+      setLiveFeedback('Direct no pudo confirmar la operación en el servidor local.');
+    } finally {pendingLive.current.delete(id);setLivePending([...pendingLive.current]);}
+  };
+  const directHideAll = async () => {
+    if (pendingLive.current.size) return;
+    try {
+      await applyDirectPatch(directHideAllPatch({components:publishedRef.current,customComponents:publishedCustomRef.current}));
+      setLiveFeedback('Todas las gráficas marcadas ocultas en el servidor local.');
+    } catch(err){showToast('error','Direct: no se pudo ocultar',err instanceof Error?err.message:undefined);}
   };
 
   // Handlers for components & OBS
@@ -382,7 +426,7 @@ export default function App() {
       // Fail closed if OBS shows the source in Program, even when the local flag is stale.
       const actualObs = obsService.getStatus();
       const program = actualObs.scenes.find(scene => scene.name === actualObs.currentProgramScene);
-      if (actualObs.connected && program && liveConfig) {
+      if (outputMode === 'obs' && actualObs.connected && program && liveConfig) {
         const active = program.sources.some(source => {
           if (!source.enabled) return false;
           if (id.startsWith('gfx-')) return matchingLiveSources([source],liveConfig,liveConfig.type).length>0 || Object.values(liveConfig.obsSourceLinks ?? {}).includes(source.name);
@@ -672,7 +716,9 @@ export default function App() {
           />
         )}
 
-        {activeSpace === 'en-vivo' && (
+        {activeSpace === 'en-vivo' && <div className="absolute right-6 top-2 z-30 flex gap-2 items-center text-xs"><label htmlFor="stdq-output-mode" className="text-slate-300">Salida</label><select id="stdq-output-mode" aria-label="Modo de salida" value={outputMode} onChange={event=>setOutputMode(parseOutputMode(event.target.value))} className="bg-slate-900 border border-white/20 rounded-lg p-2 text-white"><option value="obs">OBS Studio</option><option value="direct">Direct Engine</option></select></div>}
+        {activeSpace === 'en-vivo' && outputMode === 'direct' && <DirectControlSpace components={publishedComponents} customComponents={publishedCustomComponents} busy={livePending} feedback={liveFeedback} onToggle={id=>void directOperation(id,'toggle')} onReplay={id=>void directOperation(id,'replay')} onHideAll={()=>void directHideAll()} onEdit={id=>{setStudioFocusGraphic(id);setActiveSpace('content-studio');}} />}
+        {activeSpace === 'en-vivo' && outputMode === 'obs' && (
           <BroadcastControlSpace
             episode={episode}
             obsStatus={obsStatus}
@@ -722,8 +768,8 @@ export default function App() {
             onPublishGraphic={handlePublishGraphic}
             onManageRevision={handleManageGraphicRevision}
             focusGraphicId={studioFocusGraphic}
-            onToggleVisibility={handleToggleComponentVisibility}
-            onSendToOBS={handleToggleComponentVisibility}
+            onToggleVisibility={outputMode === 'direct' ? (id)=>void directOperation(id,'toggle') : handleToggleComponentVisibility}
+            onSendToOBS={outputMode === 'direct' ? (id)=>void directOperation(id,'toggle') : handleToggleComponentVisibility}
           />
         )}
 
