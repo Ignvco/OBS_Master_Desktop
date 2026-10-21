@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 class DirectProcess {
-  constructor({python, script, camera=0, url='http://127.0.0.1:3000/?overlay=lower-third', log=()=>{}}={}) {
+  constructor({python, script, camera=0, url='http://127.0.0.1:3000/?overlay=direct-program', log=()=>{}}={}) {
     this.python=python;
     this.script=script;
     this.camera=camera;
