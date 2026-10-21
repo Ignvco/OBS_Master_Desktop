@@ -22,12 +22,13 @@ html,body {margin:0;width:100%;height:100%;background:transparent;overflow:hidde
 main {width:1920px;height:1080px;position:fixed;top:0;left:0;background:transparent}
 #solid {position:absolute;left:120px;top:90px;width:300px;height:240px;background:rgb(230,20,35)}
 #alpha {position:absolute;left:450px;top:200px;width:240px;height:180px;background:rgba(40,130,220,.5)}
+#edge {position:absolute;left:1660px;top:885px;width:180px;height:135px;background:rgb(20,110,230)}
 #ticker {position:absolute;left:0;top:720px;height:120px;width:1200px;
   background:linear-gradient(90deg,#ff6600 0%,#ff6600 30%,#1b91cc 60%,#ff6600 100%);
   animation:slide 2.3s linear infinite alternate}
 @keyframes slide {from {transform:translateX(-250px)} to {transform:translateX(450px)}}
 </style></head><body><main data-direct-preview-revision="16">
-<div id="solid"></div><div id="alpha"></div><div id="ticker"></div>
+<div id="solid"></div><div id="alpha"></div><div id="edge"></div><div id="ticker"></div>
 </main></body></html>
 """
 
@@ -46,6 +47,10 @@ def validate_png(payload):
     # Semitransparent rectangle CSS at (450,200).
     if not 90 <= int(image[180, 330, 3]) <= 170:
         raise AssertionError("La capa translúcida no retuvo alfa ~128")
+    # Far right/bottom authored object: detects cropped 1280 CSS screenshots
+    # incorrectly masquerading as scaled 1920 CSS screenshots.
+    if int(image[620, 1150, 3]) != 255 or int(image[620, 1150, 0]) < 190:
+        raise AssertionError("Escala CDP recortó el lado derecho del lienzo 1920 CSS")
     return image
 
 
@@ -55,6 +60,16 @@ class HtmlCDPBenchTests(unittest.TestCase):
             HtmlFrameCapture(None, engine="screencast")
         with self.assertRaises(ValueError):
             HtmlFrameCapture(None, scale="invalid")
+
+    def test_png_dimensions_read_directly_from_header(self):
+        import struct
+        fake = (b"\x89PNG\r\n\x1a\n"
+                + struct.pack(">I", 13)
+                + b"IHDR"
+                + struct.pack(">II", 1280, 720))
+        self.assertEqual(HtmlFrameCapture._png_size(fake), (1280, 720))
+        with self.assertRaises(RuntimeError):
+            HtmlFrameCapture._png_size(b"wrong")
 
     def test_edge_720_png_transparency_and_ticker(self):
         with sync_playwright() as playwright:
