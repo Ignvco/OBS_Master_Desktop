@@ -39,6 +39,7 @@ export default function App() {
   // Single transparent page consumed by the Unity Capture compositor.
   // It contains every visible *published* graphic; no drafts are sent on air.
   if (overlayParamRaw === 'direct-program') return <DirectCompositeRenderer />;
+  if (overlayParamRaw === 'direct-preview') return <DirectCompositeRenderer mode="preview" />;
 
   if (customOverlayId) {
     return CUSTOM_ID_PATTERN.test(customOverlayId)
