@@ -310,18 +310,20 @@ def main():
                 # Opt-in only. Default settings are exactly those validated in
                 # RC4B. Test MJPG only after the standalone camera benchmark.
                 requested_codec = os.environ.get("STDQ_DIRECT_CAMERA_FOURCC", "").strip().upper()
+                if requested_codec and requested_codec not in ("MJPG", "YUY2"):
+                    raise ValueError("STDQ_DIRECT_CAMERA_FOURCC accepts only MJPG or YUY2")
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
+                cap.set(cv2.CAP_PROP_FPS, FPS)
                 if requested_codec:
-                    if requested_codec not in ("MJPG", "YUY2"):
-                        raise ValueError("STDQ_DIRECT_CAMERA_FOURCC accepts only MJPG or YUY2")
+                    # On some DirectShow drivers changing width or FPS
+                    # renegotiates the media subtype: request codec LAST.
                     accepted = cap.set(
                         cv2.CAP_PROP_FOURCC,
                         cv2.VideoWriter_fourcc(*requested_codec),
                     )
-                    print("Formato solicitado:", requested_codec,
+                    print("Formato solicitado al final:", requested_codec,
                           "| set FourCC:", accepted, flush=True)
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, W)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H)
-                cap.set(cv2.CAP_PROP_FPS, FPS)
                 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                 height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                 reported_fps = cap.get(cv2.CAP_PROP_FPS)
