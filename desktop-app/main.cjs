@@ -2,6 +2,7 @@
 const { app, BrowserWindow, Menu, Tray, dialog, shell, nativeImage, session, screen } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const { DirectProcess } = require('./direct-process.cjs');
 
 const DATA_DIR_NAME = 'STDQ OBS Master';
 const APP_ID = 'cl.sitedijeraque.obsmaster';
@@ -12,6 +13,20 @@ let httpServers = [];
 let explicitQuit = false;
 let resizeTimer;
 let rendererRecoveries = 0;
+let direct;
+function createDirectSupervisor() {
+  const lab = process.env.STDQ_DIRECT_LAB || path.join(app.getPath('documents'), 'OBS-MASTER-DIRECT-LAB');
+  direct = new DirectProcess({
+    python: process.env.STDQ_DIRECT_PYTHON || path.join(lab,'.venv312clean','Scripts','python.exe'),
+    script: process.env.STDQ_DIRECT_SCRIPT || path.join(__dirname, 'lab', 'direct_graphics.py'),
+    url:'http://127.0.0.1:3000/?overlay=lower-third',
+    log: message => { if (process.env.STDQ_DIRECT_DEBUG==='1') console.log('[Direct]',message.trim()); },
+  });
+}
+function reportDirectError(e) {
+  dialog.showErrorBox('Unity Camera',String(e?.message||e));
+}
+
 const WINDOW_STATE = () => path.join(app.getPath('userData'), 'window-state.json');
 function storedWindowBounds() {
   try {
@@ -36,8 +51,8 @@ function requestFullExit() {
   if (explicitQuit) return;
   const choice = dialog.showMessageBoxSync({
     type: 'warning', title: 'Salir completamente de OBS MASTER',
-    message: 'Salir detendrá el servidor de gráficas de OBS.',
-    detail: 'Si StreamYard o OBS siguen usando las fuentes de navegador de OBS MASTER, pueden quedar vacías. Para seguir transmitiendo utiliza Minimizar a bandeja.',
+    message: 'Salir detendrá OBS MASTER y la salida Unity Camera.',
+    detail: 'Si StreamYard está usando OBS MASTER, la señal puede interrumpirse. Para seguir transmitiendo utiliza Minimizar a bandeja.',
     buttons: ['Cancelar', 'Salir completamente'], defaultId: 0, cancelId: 0, noLink: true,
   });
   if (choice === 1) { explicitQuit = true; app.quit(); }
@@ -103,6 +118,8 @@ function createTray() {
   tray.setToolTip('OBS MASTER · Motor de gráficas activo');
   tray.setContextMenu(Menu.buildFromTemplate([
     {label: 'Abrir OBS MASTER', click: showWindow},
+    {label: 'Iniciar Unity Camera (laboratorio)', click:()=>{try{direct.start();}catch(e){reportDirectError(e);}}},
+    {label: 'Detener Unity Camera',click:()=>{void direct.stop().then(s=>{if(s.state==='error')reportDirectError(s.error);});}},
     {label: 'Abrir carpeta de datos', click: () => shell.openPath(path.join(app.getPath('userData'), '.stdq-runtime'))},
     {type: 'separator'},
     {label: 'Salir completamente', click: requestFullExit},
@@ -133,6 +150,7 @@ else {
       // Read native compiled JS, never Vite or TypeScript source at runtime.
       const {startStationServer} = await import('./compiled/desktop-app/server.js');
       httpServers = await startStationServer({port: PORT, staticDir: path.join(__dirname,'dist')});
+      createDirectSupervisor();
       createWindow();
       createTray();
     } catch (error) {
@@ -144,7 +162,13 @@ else {
       app.quit();
     }
   });
-  app.on('before-quit', () => { clearTimeout(resizeTimer); saveBounds(); explicitQuit = true; });
+  app.on('before-quit', (event) => {
+    clearTimeout(resizeTimer); saveBounds(); explicitQuit=true;
+    if(direct?.child && !app._directStopping){
+      event.preventDefault();app._directStopping=true;
+      void direct.stop().finally(()=>app.quit());
+    }
+  });
   app.on('window-all-closed', () => { /* Minimize to tray; keep OBS Browser Sources online. */ });
   app.on('quit', () => {
     for (const s of httpServers) { try {s.close();} catch {} }
