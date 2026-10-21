@@ -18,6 +18,8 @@ class ProgramMonitor:
         self.condition = threading.Condition()
         self.frame = None
         self.sequence = 0
+        self.preview_frame = None
+        self.preview_sequence = 0
         self.server = None
         self.thread = None
         self.stopping = False
@@ -28,6 +30,14 @@ class ProgramMonitor:
         with self.condition:
             self.frame = frame
             self.sequence += 1
+            self.condition.notify_all()
+
+    def publish_preview(self, frame):
+        if not frame:
+            return
+        with self.condition:
+            self.preview_frame = frame
+            self.preview_sequence += 1
             self.condition.notify_all()
 
     def start(self):
@@ -41,9 +51,10 @@ class ProgramMonitor:
                 if self.headers.get("X-Direct-Monitor-Token") != monitor.token:
                     self.send_error(403)
                     return
-                if self.path == "/program.jpg":
+                preview = self.path.startswith("/preview.")
+                if self.path in ("/program.jpg", "/preview.jpg"):
                     with monitor.condition:
-                        frame = monitor.frame
+                        frame = monitor.preview_frame if preview else monitor.frame
                     if not frame:
                         self.send_error(503)
                         return
@@ -55,7 +66,7 @@ class ProgramMonitor:
                     self.end_headers()
                     self.wfile.write(frame)
                     return
-                if self.path != "/program.mjpg":
+                if self.path not in ("/program.mjpg", "/preview.mjpg"):
                     self.send_error(404)
                     return
                 self.send_response(200)
@@ -67,16 +78,19 @@ class ProgramMonitor:
                 try:
                     while not monitor.stopping:
                         with monitor.condition:
+                            def sequence():
+                                return monitor.preview_sequence if preview else monitor.sequence
+
                             monitor.condition.wait_for(
-                                lambda: monitor.stopping or monitor.sequence > last,
+                                lambda: monitor.stopping or sequence() > last,
                                 timeout=2,
                             )
                             if monitor.stopping:
                                 break
-                            if monitor.sequence <= last:
+                            if sequence() <= last:
                                 continue
-                            last = monitor.sequence
-                            frame = monitor.frame
+                            last = sequence()
+                            frame = monitor.preview_frame if preview else monitor.frame
                         if frame is None:
                             continue
                         self.wfile.write(
