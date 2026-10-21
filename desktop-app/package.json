@@ -24,7 +24,6 @@
     "files": [
       "main.cjs",
       "direct-process.cjs",
-      "lab/**/*",
       "assets/**/*",
       "dist/**/*",
       "compiled/**/*",
@@ -58,7 +57,16 @@
     "portable": {
       "artifactName": "STDQ-OBS-MASTER-Portable-${version}.${ext}"
     },
-    "artifactName": "STDQ-OBS-MASTER-${version}.${ext}"
+    "artifactName": "STDQ-OBS-MASTER-${version}.${ext}",
+    "extraResources": [
+      {
+        "from": "lab",
+        "to": "direct-engine",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   },
   "author": "Equipo Si Te Dijera Que?"
 }
