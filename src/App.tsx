@@ -32,12 +32,13 @@ import {addCustomGraphic,createCustomGraphic,createBlankGraphic,removeCustomGrap
 export default function App() {
   // Check if loaded as an OBS Browser Source overlay: ?overlay=lower-third etc.
   const urlParams = new URLSearchParams(window.location.search);
-  const overlayParam = urlParams.get('overlay') as ComponentType | null;
+  const overlayParamRaw = urlParams.get('overlay');
+  const overlayParam = overlayParamRaw as ComponentType | null;
   const customOverlayId = urlParams.get('overlayId');
 
   // Single transparent page consumed by the Unity Capture compositor.
   // It contains every visible *published* graphic; no drafts are sent on air.
-  if (overlayParam === 'direct-program') return <DirectCompositeRenderer />;
+  if (overlayParamRaw === 'direct-program') return <DirectCompositeRenderer />;
 
   if (customOverlayId) {
     return CUSTOM_ID_PATTERN.test(customOverlayId)
