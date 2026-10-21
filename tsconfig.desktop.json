@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022", "DOM", "DOM.Iterable"
+    ],
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "rootDir": ".",
+    "outDir": "desktop-app/compiled",
+    "noEmitOnError": true
+  },
+  "include": [
+    "desktop-app/server.ts",
+    "src/server/**/*.ts",
+    "src/utils/libraryCatalog.ts",
+    "src/types/index.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/tests",
+    "dist"
+  ]
+}

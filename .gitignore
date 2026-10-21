@@ -1,0 +1,17 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Datos locales de producción (no compartir)
+.stdq-runtime/
+
+# Desktop executable artifacts (never package in source snapshots)
+desktop-app/node_modules/
+desktop-app/dist/
+desktop-app/compiled/
+desktop-app/release/

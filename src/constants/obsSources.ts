@@ -1,0 +1,17 @@
+export const SOURCE_ALIASES: Record<string, string[]> = {
+  'banner': ['GFX_BANNER_FRASE', 'GFX_BANNER'],
+  'lower-third': ['GFX_LOWER_THIRD'],
+  'chapter': ['GFX_CAPITULO', 'GFX_CHAPTER'],
+  'section': ['GFX_SECCION'],
+  'question': ['GFX_PREGUNTA'],
+  'quote': ['GFX_FRASE_COMPLETA'],
+  'scripture': ['GFX_VERSICULO'],
+  'social': ['GFX_REDES'],
+  'social-pill': ['GFX_SOCIAL_PILL'],
+  'logo-bug': ['GFX_MOSCA', 'GFX_LOGO'],
+  'ticker': ['GFX_CINTA'],
+  'editorial': ['GFX_EDITORIAL'],
+  'waiting': ['GFX_ESPERA'],
+  'break': ['GFX_PAUSA'],
+  'outro': ['GFX_CIERRE'],
+};

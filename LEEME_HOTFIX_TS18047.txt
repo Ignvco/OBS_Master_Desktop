@@ -1,0 +1,20 @@
+OBS MASTER V3.5 — HOTFIX TS18047 (Inspector de Capas)
+
+Motivo:
+TypeScript detectaba que `current` podia ser null al leer `borderColor`.
+
+Cambio aplicado en src/components/spaces/LayerEditorPanel.tsx, linea ~189:
+  value={current.borderColor??'#FFFFFF'}
+por:
+  value={current?.borderColor??'#FFFFFF'}
+
+Instalacion:
+1. Cierra OBS MASTER fuera de emision.
+2. Realiza una copia de seguridad de tu proyecto actual.
+3. Extrae el ZIP en la carpeta que contiene package.json, respetando la ruta src/.
+4. Reemplaza el archivo al confirmar Windows.
+5. Ejecuta PROBAR_CONTENT_STUDIO_V35_WINDOWS.bat.
+6. Si las comprobaciones pasan, ejecuta CREAR_EXE_WINDOWS.bat.
+
+No sustituir .env, package-lock.json, node_modules ni .stdq-runtime.
+El hotfix no garantiza que la compilacion completa pase: debe comprobarse en Windows.

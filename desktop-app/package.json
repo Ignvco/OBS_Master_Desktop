@@ -1,0 +1,62 @@
+{
+  "name": "stdq-obs-master-desktop",
+  "productName": "Si Te Dijera Que - OBS MASTER",
+  "version": "4.2.0-rc.1",
+  "description": "OBS MASTER Desktop - Fase 1 estabilidad y Fase 2 Content Studio premium",
+  "private": true,
+  "type": "module",
+  "main": "main.cjs",
+  "scripts": {
+    "dist:win": "electron-builder --win nsis portable --x64",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "cl.sitedijeraque.obsmaster",
+    "productName": "STDQ OBS MASTER",
+    "directories": {
+      "output": "release"
+    },
+    "asar": true,
+    "files": [
+      "main.cjs",
+      "assets/**/*",
+      "dist/**/*",
+      "compiled/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OBS MASTER",
+      "artifactName": "STDQ-OBS-MASTER-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "STDQ-OBS-MASTER-Portable-${version}.${ext}"
+    },
+    "artifactName": "STDQ-OBS-MASTER-${version}.${ext}"
+  },
+  "author": "Equipo Si Te Dijera Que?"
+}

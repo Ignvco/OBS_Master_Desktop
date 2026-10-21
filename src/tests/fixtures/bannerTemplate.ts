@@ -1,0 +1,46 @@
+import type { EditorialComponentConfig } from '../../types/index.ts';
+
+/** Complete, type-checked test fixture; never rely on incomplete assertions. */
+export const TEMPLATE = {
+  id: 'banner',
+  type: 'banner',
+  name: 'Banner',
+  visibleInOBS: false,
+  content: { phrase: 'Original' },
+  font: {
+    family: 'Plus Jakarta Sans',
+    size: 26,
+    weight: 700,
+    lineHeight: 1.3,
+    letterSpacing: 0,
+    color: '#FFFFFF',
+    textTransform: 'none',
+    align: 'left',
+  },
+  geometry: {
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    scale: 1,
+    rotation: 0,
+    opacity: 1,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+    boxShadow: 'none',
+    padding: 0,
+  },
+  animation: {
+    preset: 'apple-spring',
+    entryDurationMs: 650,
+    exitDurationMs: 400,
+    delayMs: 0,
+    easing: 'ease-out',
+    staggerWords: false,
+    direction: 'up',
+    loopPulse: false,
+  },
+  updatedAt: '',
+} satisfies EditorialComponentConfig;

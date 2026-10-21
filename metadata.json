@@ -1,0 +1,6 @@
+{
+  "name": "SI TE DIJERA QUE? — OBS MASTER V3.0",
+  "description": "Estación profesional de transmisión, realización y diseño creativo en vivo para el programa Si Te Dijera Que? Control de OBS Studio, cámara virtual, escaleta, monitor preview/program y Content Studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
