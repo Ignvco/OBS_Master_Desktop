@@ -165,8 +165,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="relative flex h-3 w-3">
-              {obsStatus.connected&&<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"/>}
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${obsStatus.connected?'bg-rose-600':'bg-slate-500'}`}></span>
+              {(obsStatus.connected||directProgramRunning)&&<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"/>}
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${obsStatus.connected||directProgramRunning?'bg-rose-600':'bg-slate-500'}`}></span>
             </span>
             <span className="text-xs font-extrabold uppercase tracking-widest text-white">
               Centro de Realización En Vivo
@@ -178,11 +178,11 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           </span>
 
           <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-mono font-bold ${
-            obsStatus.connected
+            (obsStatus.connected||directProgramRunning)
               ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
               : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
           }`}>
-            <span className={`w-2 h-2 rounded-full ${obsStatus.connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+            <span className={`w-2 h-2 rounded-full ${obsStatus.connected||directProgramRunning ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
             <span>{directProgramRunning ? 'UNITY CAMERA ACTIVA' : obsStatus.connected ? `OBS CONECTADO (${obsStatus.latencyMs}ms)` : 'OBS DESCONECTADO'}</span>
           </div>
         </div>
