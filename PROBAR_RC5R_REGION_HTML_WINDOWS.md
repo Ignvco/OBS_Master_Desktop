@@ -119,3 +119,13 @@ INICIAR_RC5_MONITORES_FLUIDOS_WINDOWS.bat
 ```
 
 Mantener intacta la estabilidad Unity ~29,8fps y monitores 15fps. **La cinta HTML requiere una arquitectura de animación no dependiente de PNG fullscreen por movimiento** o un método de captura sustancialmente distinto, después de identificación exacta del tipo de cinta y sus propiedades en Content Studio. No mezclar experimentos fallidos a `v5-monitor-async`, `v5-native` ni `main`.
+
+### Inspección posterior del componente ticker real (solo código, NO validación en Windows)
+
+Los archivos originales de RC5M muestran por qué **este tipo de gráfica** no encaja bien con calcular la unión de todos los `getBoundingClientRect()`:
+
+- `src/components/overlays/TickerMarquee.tsx`: la cinta duplica intencionalmente dos grupos de texto, dentro de `.stdq-ticker-track` con anchura de contenido, para hacer un desplazamiento **continuo sin salto al terminar el ciclo**.
+- `src/index.css`: `.stdq-ticker-window { overflow:hidden }` y `.stdq-ticker-track { width:max-content; animation:stdq-ticker-loop ... }`. El resto de la cinta que queda fuera de la ventana visible **debe quedar recortado por CSS**.
+- `direct_html_roi.py`: el prototipo ROI unía el rectángulo de **todos los descendientes**, incluso partes de la pista que están fuera de la ventana visible y recortadas. Esto puede expandir el bounding rectangle y hacer que el umbral 72% fuerce fallback a imagen completa. La hipótesis cuadra con `ROI=100%/100%` del usuario, **pero no demuestra que fuera la única causa**, porque no se guardaron bounding boxes DOM de esa ejecución.
+
+**Plan siguiente recomendado, sin codificar más sobre RC5M a ciegas:** capturar el aspecto estático de la cinta y sus grupos tipográficos/máscaras **solo al publicar/cambiar**; animar el desplazamiento horizontal mediante el compositor nativo sobre imágenes premultiplicadas, con la misma dirección, duración, ancho de ciclo y pausa que `TickerMarquee`, en un **hilo/estado separado para Preview y Program**. Mantener un fallback completo para las demás gráficas y probar equivalencia visual fuera de emisión. De esta forma, el ticker deja de requerir PNG de Playwright por cada paso de movimiento; StreamYard puede recibir posiciones de scroll a 30fps aunque los monitores del panel se mantengan a 15fps. Verificar efectos complejos, fuentes, máscaras, bordes y semántica Take antes de cualquier merge.
