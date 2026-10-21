@@ -56,13 +56,13 @@ export function DirectCompositeRenderer({mode='program'}:{mode?:'program'|'previ
       if(state.customComponents)setCustom(state.customComponents);
       if(state.countdown)setCountdown(state.countdown);
       if(typeof state.directTakeId==='string')setDirectTakeId(state.directTakeId);
-      if(typeof state.directTakeId==='string')setDirectTakeId(state.directTakeId);
     }).catch(error=>console.warn('Direct compositor: station read failed',error));
     const unsubscribe=SharedStation.watch(state=>{
       if(!alive)return;
       if(state.components)setComponents(state.components);
       if(state.customComponents)setCustom(state.customComponents);
       if(state.countdown)setCountdown(state.countdown);
+      if(typeof state.directTakeId==='string')setDirectTakeId(state.directTakeId);
     },()=>console.warn('Direct compositor: station events disconnected'));
     const timer=window.setInterval(()=>setClock(n=>n+1),250);
     return ()=>{
