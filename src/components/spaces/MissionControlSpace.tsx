@@ -81,6 +81,7 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
   const [subTab, setSubTab] = useState<'overview' | 'performance' | 'settings' | 'recovery'>('overview');
   // Compute health score
   const activeComponentsCount = [...Object.values(components),...Object.values(customComponents)].filter(c => c.visibleInOBS).length;
+  // OBS WebSocket and its virtual camera are not proof of a complete preflight or an external StreamYard broadcast.
   const isReady = obsStatus.virtualCamActive && obsStatus.connected;
 
   return (
@@ -88,9 +89,9 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
       {/* Subtab Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-[#FF6B00] uppercase tracking-wider">Espacio A</span>
+          <span className="text-xs font-bold text-[#FF6B00] uppercase tracking-wider">OBS MASTER V4.2</span>
           <span className="text-xs text-slate-400">·</span>
-          <span className="text-xs text-slate-300 font-semibold">Misión Control</span>
+          <span className="text-xs text-slate-300 font-semibold">Inicio · Estado de la estación</span>
         </div>
 
         <div className="flex flex-wrap items-center p-1 rounded-xl bg-white/[0.04] border border-white/10 gap-1">
@@ -189,7 +190,7 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
               <span>{episode.rundown.length} bloques planificados</span>
               <span aria-hidden="true">·</span>
               <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Estación V3.0 Optimizada
+                <CheckCircle2 className="w-3.5 h-3.5" /> OBS MASTER V4.2
               </span>
             </div>
           </div>
@@ -204,10 +205,10 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
               <div className={`w-3 h-3 rounded-full ${isReady ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
               <div>
                 <div className="text-xs font-bold uppercase tracking-wider">
-                  {isReady ? 'Sistema Listo Para Salir Al Aire' : 'Revisión Pre-Vuelo Requerida'}
+                  {isReady ? 'OBS conectado y cámara activa' : 'Configuración de emisión pendiente'}
                 </div>
                 <div className="text-[11px] opacity-80">
-                  {obsStatus.virtualCamActive ? 'Cámara Virtual activa hacia StreamYard' : 'Activar Cámara Virtual antes de transmitir'}
+                  {obsStatus.virtualCamActive ? 'Cámara de OBS activa · verifica la señal en StreamYard' : 'Comprueba OBS y activa la cámara virtual cuando corresponda'}
                 </div>
               </div>
             </div>
@@ -229,6 +230,31 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-white/[0.025] px-5 py-4 space-y-3" aria-label="Cómo empezar con OBS MASTER">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-bold text-white">Tu recorrido de producción</h2>
+          <span className="text-xs text-slate-400">Diseña → prepara → opera. Nada de esto inicia StreamYard automáticamente.</span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <button type="button" onClick={()=>onNavigate('content-studio')} className="text-left rounded-xl p-3 border border-white/10 hover:border-[#FF6B00]/50 hover:bg-[#FF6B00]/5 transition-colors">
+            <span className="text-[10px] font-semibold text-[#FF8A3C] tracking-wider">01 · CREAR</span>
+            <span className="block mt-1 text-sm font-bold text-white">Diseñar una gráfica →</span>
+            <span className="block mt-1 text-xs text-slate-400">Editar el borrador y publicar el diseño. Publicar no lo envía al aire.</span>
+          </button>
+          <button type="button" onClick={()=>onNavigate('preparacion')} className="text-left rounded-xl p-3 border border-white/10 hover:border-[#FF6B00]/50 hover:bg-[#FF6B00]/5 transition-colors">
+            <span className="text-[10px] font-semibold text-[#FF8A3C] tracking-wider">02 · PREPARAR</span>
+            <span className="block mt-1 text-sm font-bold text-white">Preparar el programa →</span>
+            <span className="block mt-1 text-xs text-slate-400">Revisar la escaleta, fuentes y verificaciones antes de transmitir.</span>
+          </button>
+          <button type="button" onClick={()=>onNavigate('en-vivo')} className="text-left rounded-xl p-3 border border-white/10 hover:border-rose-500/50 hover:bg-rose-500/5 transition-colors">
+            <span className="text-[10px] font-semibold text-rose-300 tracking-wider">03 · OPERAR</span>
+            <span className="block mt-1 text-sm font-bold text-white">Abrir En Vivo →</span>
+            <span className="block mt-1 text-xs text-slate-400">Controlar escenas y gráficas en OBS. Puede afectar Program.</span>
+          </button>
+        </div>
+        <p className="text-[11px] text-slate-400">OBS conectado y cámara activa no confirman audio, imagen ni emisión pública. Comprueba esos puntos en OBS y StreamYard antes de comenzar.</p>
       </section>
 
       {/* Primary Telemetry Grid (4 Essential Checks) */}
