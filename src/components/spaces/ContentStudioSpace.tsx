@@ -924,6 +924,12 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
               <button type="button" disabled={publicationBusy||saveStatus!=='saved'} className="studio-secondary-cta" onClick={()=>void manageHistory('save')}>+ Guardar versión</button>
               <button type="button" disabled={publicationBusy||historySelection===''} className="studio-secondary-cta" onClick={()=>void manageHistory('restore-draft')}>Recuperar borrador</button>
               <button type="button" disabled={publicationBusy||historySelection===''} className="studio-history-more" onClick={()=>setHistoryActionsOpen(v=>!v)} aria-expanded={historyActionsOpen}>Gestionar</button>
+              {historyActionsOpen && <div className="studio-history-management ux-history-management" role="group" aria-label="Gestionar historial">
+                <span>Solo «Guardar versión» genera revisiones. Publicar y recuperar no crean copias.</span>
+                <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('rename')}>Renombrar</button>
+                <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('pin')}>{timeline?.revisions.find(r=>r.version===historySelection)?.pinned?'Desproteger':'Proteger'}</button>
+                <button type="button" disabled={publicationBusy||historySelection===''||Boolean(timeline?.revisions.find(r=>r.version===historySelection)?.pinned)} onClick={()=>void manageHistory('remove')}>Eliminar</button>
+              </div>}
               </div>
               </details>
               <button type="button" disabled={publicationBusy||saveStatus==='saving'||saveStatus==='error'||!draftDifferent||Boolean(publishedSelected?.visibleInOBS)}
@@ -932,12 +938,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
             </div>
           </div>
           <div className="ux-publication-explainer" role="note"><ShieldCheck size={13}/> Publicar actualiza el diseño utilizado por OBS; <strong>no muestra la gráfica al aire.</strong> Para operarla, abre En Vivo.</div>
-          {historyActionsOpen && <div className="studio-history-management" role="group" aria-label="Gestionar historial">
-            <span>Solo «Guardar versión» genera revisiones. Publicar y recuperar no crean copias.</span>
-            <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('rename')}>Renombrar</button>
-            <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('pin')}>{timeline?.revisions.find(r=>r.version===historySelection)?.pinned?'Desproteger':'Proteger'}</button>
-            <button type="button" disabled={publicationBusy||historySelection===''||Boolean(timeline?.revisions.find(r=>r.version===historySelection)?.pinned)} onClick={()=>void manageHistory('remove')}>Eliminar</button>
-          </div>}
+
           {publicationMessage&&<p role="alert" className="px-5 py-1.5 text-[11px] text-rose-300 bg-rose-500/10">{publicationMessage}</p>}
           {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> EN VIVO: puedes seguir editando el borrador y recuperar versiones solo al borrador. Para publicar el diseño debes retirar primero la gráfica del aire.</div>}
         </div>
