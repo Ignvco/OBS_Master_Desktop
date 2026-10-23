@@ -165,7 +165,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               <span className={`relative inline-flex rounded-full h-3 w-3 ${obsStatus.connected?'bg-rose-600':'bg-slate-500'}`}></span>
             </span>
             <span className="text-xs font-extrabold uppercase tracking-widest text-white">
-              Centro de Realización En Vivo
+              En Vivo · Mesa de realización
             </span>
           </div>
           <span className="text-xs text-slate-500">|</span>
@@ -197,16 +197,17 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             Modo Estudio {obsStatus.studioMode ? 'ON' : 'OFF'}
           </button>
 
-          {/* Panic Clear All Overlays */}
-          <button
-            disabled={!obsStatus.connected || pendingComponents.length > 0}
-            onClick={onHideAllComponents}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold transition-all"
-            title="Ocultar inmediatamente todos los overlays gráficos en pantalla"
-          >
-            <EyeOff className="w-3.5 h-3.5" />
-            <span>Pánico: Despejar Gráficas</span>
-          </button>
+          <span className={`rounded-lg border px-3 py-2 text-xs font-semibold ${obsStatus.studioMode?'border-emerald-500/25 text-emerald-200 bg-emerald-500/10':'border-amber-400/30 text-amber-200 bg-amber-400/10'}`} role="status">
+            {obsStatus.studioMode ? 'Seleccionar escena → Preview' : 'Atención: seleccionar escena → Program'}
+          </span>
+          <div className="flex items-center gap-2 border-l border-rose-500/25 pl-3" aria-label="Acción de emergencia">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 hidden 2xl:inline">Emergencia</span>
+            <button type="button" disabled={!obsStatus.connected || pendingComponents.length > 0} onClick={onHideAllComponents}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/35 text-rose-200 text-xs font-bold disabled:opacity-40"
+              title="Ocultar las gráficas de OBS sin cambiar la escena Program">
+              <EyeOff className="w-4 h-4"/> Despejar gráficas
+            </button>
+          </div>
         </div>
       </div>
 
@@ -254,15 +255,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {/* Preview Quick Action Footer */}
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-slate-400">Listo para enviar al aire</span>
-            <button
-              disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
-              onClick={() => onExecuteTransition(activeTransition)}
-              className="disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all"
-            >
-              <span>Transición a Program</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <span className="text-xs text-slate-300">{obsStatus.studioMode ? 'Escena indicada en Preview · no está en Program' : 'Modo Estudio desactivado · selección directa a Program'}</span>
+            <span className="text-[11px] text-emerald-300 font-semibold">Transición en el control inferior ↓</span>
           </div>
         </div>
 
@@ -323,7 +317,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between text-xs text-slate-300">
             <span>Estado de salida OBS · Verificar en monitor real</span>
             <span className="font-semibold text-emerald-400">
-              {obsStatus.virtualCamActive ? 'Cámara Virtual: TRANSMITIENDO' : 'Cámara Virtual: OFF'}
+              {obsStatus.virtualCamActive ? 'Cámara virtual OBS activa' : 'Cámara virtual OBS inactiva'}
             </span>
           </div>
         </div>
@@ -353,7 +347,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
             onClick={() => onExecuteTransition(activeTransition)}
             className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >{transitionPending ? 'Transición en curso…' : `Ejecutar ${activeTransition || 'transición'}`}</button>
+          >{transitionPending ? 'Transición en curso…' : `Enviar ${obsStatus.currentPreviewScene || 'Preview'} a Program · ${activeTransition || 'transición'}`}</button>
         </div>
         {!obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
         {obsStatus.studioMode && availableTransitions.length === 0 && <p className="text-amber-300 text-xs">No se recibió el catálogo de transiciones de OBS. Comprueba la conexión o vuelve a conectar.</p>}
@@ -370,7 +364,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               <span className="text-[11px] font-mono text-slate-400">{obsStatus.scenes.length} ESCENAS</span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Clic para preparar en Preview. En modo no-estudio conmuta directamente.
+              {obsStatus.studioMode ? 'Seleccionar prepara en Preview; no cambia Program.' : 'Modo Estudio desactivado: seleccionar envía directamente a Program.'}
             </p>
           </div>
 

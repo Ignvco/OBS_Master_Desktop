@@ -13,6 +13,7 @@ import {
   ListCheck, 
   FolderKanban, 
   Sparkles,
+  Settings2,
   ExternalLink,
   Download
 } from 'lucide-react';
@@ -40,9 +41,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const spaces: { id: NavigationSpace; label: string; icon: React.ReactNode }[] = [
     { id: 'inicio', label: 'Inicio', icon: <Radio className="w-3.5 h-3.5" /> },
-    { id: 'preparacion', label: 'Preparación', icon: <ListCheck className="w-3.5 h-3.5" /> },
+    { id: 'content-studio', label: 'Diseñar', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'preparacion', label: 'Preparar', icon: <ListCheck className="w-3.5 h-3.5" /> },
     { id: 'en-vivo', label: 'En Vivo', icon: <Tv className="w-3.5 h-3.5" /> },
-    { id: 'content-studio', label: 'Content Studio', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'biblioteca', label: 'Biblioteca', icon: <FolderKanban className="w-3.5 h-3.5" /> },
   ];
 
@@ -66,14 +67,14 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="text-xs sm:text-sm font-extrabold tracking-tight text-white font-sans uppercase whitespace-nowrap">
-                Si Te Dijera Que?
+                OBS MASTER
               </span>
               <span className="text-[9px] font-bold px-1.5 py-0.2 bg-[#FF6B00]/20 text-[#FF6B00] border border-[#FF6B00]/30 rounded tracking-wider">
-                V3.0.2
+                V4.2
               </span>
             </div>
             <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium hidden xs:inline whitespace-nowrap">
-              Broadcast Station
+              SI TE DIJERA QUE? · ESTACIÓN GRÁFICA
             </span>
           </div>
         </a>
@@ -137,10 +138,10 @@ export const Header: React.FC<HeaderProps> = ({
           }`} />
           <span className="hidden md:inline">
             {obsStatus.connected 
-              ? `OBS Conectado (${obsStatus.latencyMs}ms)`
+              ? `OBS conectado (${obsStatus.latencyMs} ms)`
               : obsStatus.connecting 
               ? 'Conectando a OBS...' 
-              : 'OBS Desconectado'}
+              : 'OBS sin conectar'}
           </span>
         </button>
 
@@ -155,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
           }`}
         >
           <Video className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden lg:inline">Cámara Virtual</span>
+          <span className="hidden lg:inline">Cámara OBS</span>
           <span className={`text-[10px] px-1 rounded ${obsStatus.virtualCamActive ? 'bg-sky-500 text-black font-extrabold' : 'bg-slate-700 text-slate-300'}`}>
             {obsStatus.virtualCamActive ? 'ON' : 'OFF'}
           </span>
@@ -170,13 +171,18 @@ export const Header: React.FC<HeaderProps> = ({
               ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
               : 'bg-black/30 text-slate-400 border-white/10 hover:text-slate-200'
           }`}
-          aria-label={isProtectedMode ? "Desactivar modo protegido" : "Activar modo protegido"}
+          aria-label={isProtectedMode ? "Protección activa: desactivar modo protegido" : "Protección desactivada: activar modo protegido"}
         >
           {isProtectedMode ? (
             <Shield className="w-4 h-4 text-amber-400" />
           ) : (
             <ShieldAlert className="w-4 h-4 text-slate-400" />
           )}
+          <span className="hidden 2xl:inline text-xs ml-1">{isProtectedMode ? 'Protección activa' : 'Sin protección'}</span>
+        </button>
+        <button type="button" onClick={onOpenConnectionModal} title="Abrir ajustes de conexión con OBS" aria-label="Ajustes de conexión OBS"
+          className="px-2.5 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
+          <Settings2 className="w-4 h-4" />
         </button>
       </div>
     </header>

@@ -724,6 +724,7 @@ export default function App() {
             focusGraphicId={studioFocusGraphic}
             onToggleVisibility={handleToggleComponentVisibility}
             onSendToOBS={handleToggleComponentVisibility}
+            onGoLive={() => setActiveSpace('en-vivo')}
           />
         )}
 
