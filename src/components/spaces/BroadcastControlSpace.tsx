@@ -255,7 +255,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {/* Preview Quick Action Footer */}
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-slate-300">Escena preparada; todavía no está en Program</span>
+            <span className="text-xs text-slate-300">{obsStatus.studioMode ? 'Escena indicada en Preview · no está en Program' : 'Modo Estudio desactivado · selección directa a Program'}</span>
             <span className="text-[11px] text-emerald-300 font-semibold">Transición en el control inferior ↓</span>
           </div>
         </div>
