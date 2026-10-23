@@ -77,6 +77,7 @@ interface ContentStudioSpaceProps {
   publicationBusy: boolean;
   onPublishGraphic: (id: string) => Promise<void>;
   focusGraphicId?:string|null;
+  onGoLive: () => void;
   onManageRevision: (id:string,action:'save'|'restore-draft'|'rename'|'remove'|'pin',version?:number,label?:string)=>Promise<void>;
   saveStatus: 'saved' | 'saving' | 'error';
   onRetrySave: () => void;
@@ -99,6 +100,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
   onPublishGraphic,
   onManageRevision,
   focusGraphicId,
+  onGoLive,
 }) => {
   // Preferences affect this editor only, never the broadcast component or Browser Source.
   const [initialWorkspace] = useState<WorkspacePreferences>(()=>{
@@ -137,6 +139,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
   const [historyActionsOpen,setHistoryActionsOpen]=useState(false);
   const [comparePublished,setComparePublished] = useState(false);
   const [commandOpen,setCommandOpen] = useState(false);
+  const [showAdvancedInspector, setShowAdvancedInspector] = useState(false);
   // A comparison belongs to the current document only; never carry its locks
   // or preview styling over when another graphic is selected.
   useEffect(() => { setComparePublished(false); setPreviewOnly(false); setHistoryActionsOpen(false);setHistorySelection(''); }, [selectionKey]);
@@ -902,7 +905,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           </div>
           <div className="studio-topbar-publish">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="studio-stage-label">CONTROL DE VERSIONES</span>
+              <span className="studio-stage-label">DISEÑO Y PUBLICACIÓN</span>
               <span className={`studio-version-pill ${publishedSelected?.visibleInOBS?'studio-version-live':''}`}>{publishedSelected?.visibleInOBS?'● AL AIRE':publishedSelected?'● Publicada':'Nunca publicada'}</span>
               <span className={`studio-change-pill ${draftDifferent?'studio-change-pending':'studio-change-synced'}`}>{draftDifferent?'● Cambios pendientes':'✓ Sin cambios'}</span>
             </div>
@@ -912,17 +915,23 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
                 <button type="button" disabled={!publishedSelected} aria-pressed={comparePublished}
                   onClick={()=>{setComparePublished(true);setPreviewOnly(true);selectIds([]);}} className={comparePublished?'active':''}>Publicado</button>
               </div>
+              <details className="ux-history-details">
+              <summary className="studio-secondary-cta cursor-pointer">Versiones e historial</summary>
+              <div className="ux-history-controls">
               <select aria-label="Versiones anteriores" value={historySelection} onChange={event=>setHistorySelection(event.target.value===''?'':Number(event.target.value))}
                 className="studio-history-select"><option value="">Historial…</option>
                 {(timeline?.revisions??[]).slice().reverse().map(r=><option key={r.version} value={r.version}>v{r.version} · {r.pinned?'🔒 ':''}{r.label||`Guardada ${r.publishedAt.slice(0,10)}`}</option>)}</select>
               <button type="button" disabled={publicationBusy||saveStatus!=='saved'} className="studio-secondary-cta" onClick={()=>void manageHistory('save')}>+ Guardar versión</button>
               <button type="button" disabled={publicationBusy||historySelection===''} className="studio-secondary-cta" onClick={()=>void manageHistory('restore-draft')}>Recuperar borrador</button>
               <button type="button" disabled={publicationBusy||historySelection===''} className="studio-history-more" onClick={()=>setHistoryActionsOpen(v=>!v)} aria-expanded={historyActionsOpen}>Gestionar</button>
+              </div>
+              </details>
               <button type="button" disabled={publicationBusy||saveStatus==='saving'||saveStatus==='error'||!draftDifferent||Boolean(publishedSelected?.visibleInOBS)}
                 title={publishedSelected?.visibleInOBS?'Retira primero la fuente del aire':saveStatus==='error'?'Soluciona primero el guardado del borrador':'Publicación explícita, con confirmación'}
-                className="studio-publish-cta" onClick={()=>void publishSelected()}><ShieldCheck size={14}/> {publicationBusy?'Publicando…':'Publicar'}</button>
+                className="studio-publish-cta" onClick={()=>void publishSelected()}><ShieldCheck size={14}/> {publicationBusy?'Publicando…':'Publicar diseño'}</button>
             </div>
           </div>
+          <div className="ux-publication-explainer" role="note"><ShieldCheck size={13}/> Publicar actualiza el diseño utilizado por OBS; <strong>no muestra la gráfica al aire.</strong> Para operarla, abre En Vivo.</div>
           {historyActionsOpen && <div className="studio-history-management" role="group" aria-label="Gestionar historial">
             <span>Solo «Guardar versión» genera revisiones. Publicar y recuperar no crean copias.</span>
             <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('rename')}>Renombrar</button>
@@ -930,7 +939,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
             <button type="button" disabled={publicationBusy||historySelection===''||Boolean(timeline?.revisions.find(r=>r.version===historySelection)?.pinned)} onClick={()=>void manageHistory('remove')}>Eliminar</button>
           </div>}
           {publicationMessage&&<p role="alert" className="px-5 py-1.5 text-[11px] text-rose-300 bg-rose-500/10">{publicationMessage}</p>}
-          {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> EN VIVO: puedes editar tu borrador. Publicar y restaurar requieren retirar la gráfica del aire.</div>}
+          {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> EN VIVO: puedes seguir editando el borrador y recuperar versiones solo al borrador. Para publicar el diseño debes retirar primero la gráfica del aire.</div>}
         </div>
         <div className="studio-view-controls shrink-0">
           {/* Viewport & Guide Toggles */}
@@ -984,28 +993,11 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
 
             <div className="h-4 w-px bg-white/10 mx-1" />
 
-            {/* OBS Broadcast Action */}
-            <button
-              disabled={!publishedSelected}
-              title={!publishedSelected?'Publica primero esta gráfica antes de enviarla a OBS':'Control real de visibilidad OBS'}
-              onClick={() => onToggleVisibility(selectionKey)}
-              className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg border transition-all ${
-                publishedSelected?.visibleInOBS
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30'
-                  : 'bg-[#FF6B00] text-white hover:bg-[#ff7a1a] shadow-md shadow-[#FF6B00]/20'
-              }`}
-            >
-              {publishedSelected?.visibleInOBS ? (
-                <>
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span>Retirar de OBS</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Enviar al Aire</span>
-                </>
-              )}
+            {/* Editorial handoff: live visibility is controlled in the realization workspace. */}
+            <button type="button" onClick={onGoLive}
+              title="Abrir la mesa En Vivo para mostrar u ocultar gráficas en OBS"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10">
+              <Radio className="w-3.5 h-3.5" /> Gestionar en En Vivo →
             </button>
           </div>
         </div>
@@ -1278,31 +1270,39 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
         {/* Inspector Tab Bar */}
         <div className="studio-inspector-header" aria-label="Herramientas de edición">
           <div className="studio-inspector-heading"><span>HERRAMIENTAS</span><span className="studio-inspector-hint">Selecciona un panel</span></div>
-          <div className="studio-inspector-tabs" role="group" aria-label="Pestañas del inspector">
-          {[
-            { id: 'smart', label: 'Rápido', icon: '◉' },
-            { id: 'layers', label: 'Capas', icon: '▧' },
-            { id: 'content', label: 'Contenido', icon: '📝' },
-            { id: 'design', label: 'Texto', icon: '🔤' },
-            { id: 'geometry', label: 'Forma', icon: '📐' },
-            { id: 'animation', label: 'Motion', icon: '⚡' },
-            { id: 'branding', label: 'Logo', icon: '◈' },
-            { id: 'broadcast', label: 'OBS', icon: '📡' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveInspectorTab(tab.id as any)}
-              className={`studio-inspector-tab ${
-                activeInspectorTab === tab.id 
-                  ? 'bg-white/15 text-white shadow-sm border border-white/10' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
+          <div className="studio-inspector-tabs" role="group" aria-label="Herramientas esenciales">
+            {([
+              { id:'smart', label:'Rápido', icon:'◉' },
+              { id:'content', label:'Contenido', icon:'📝' },
+              { id:'layers', label:'Capas', icon:'▧' },
+              { id:'animation', label:'Animar', icon:'⚡' },
+            ] as const).map(tab => (
+              <button key={tab.id} type="button" onClick={()=>setActiveInspectorTab(tab.id)}
+                aria-pressed={activeInspectorTab===tab.id}
+                className={`studio-inspector-tab ${activeInspectorTab===tab.id?'bg-white/15 text-white shadow-sm border border-white/10':'text-slate-400 hover:text-white hover:bg-white/[0.03]'}`}>
+                <span aria-hidden="true">{tab.icon}</span><span>{tab.label}</span>
+              </button>
+            ))}
           </div>
+          <button type="button" className="ux-advanced-trigger" aria-expanded={showAdvancedInspector}
+            onClick={()=>setShowAdvancedInspector(v=>!v)}>
+            Más herramientas: texto, forma, logo y OBS <ChevronDown size={13} className={showAdvancedInspector?'rotate-180':''}/>
+          </button>
+          {showAdvancedInspector && <div className="studio-inspector-tabs ux-advanced-tabs" role="group" aria-label="Herramientas avanzadas">
+            {([
+              { id:'design', label:'Texto', icon:'🔤' },
+              { id:'geometry', label:'Forma', icon:'📐' },
+              { id:'branding', label:'Logo', icon:'◈' },
+              { id:'broadcast', label:'OBS', icon:'📡' },
+            ] as const).map(tab=>(
+              <button type="button" key={tab.id} onClick={()=>setActiveInspectorTab(tab.id)} aria-pressed={activeInspectorTab===tab.id}
+                className={`studio-inspector-tab ${activeInspectorTab===tab.id?'bg-white/15 text-white shadow-sm border border-white/10':'text-slate-400 hover:text-white hover:bg-white/[0.03]'}`}>
+                <span aria-hidden="true">{tab.icon}</span><span>{tab.label}</span>
+              </button>
+            ))}
+          </div>}
+          {!showAdvancedInspector && ['design','geometry','branding','broadcast'].includes(activeInspectorTab) &&
+            <span className="text-[11px] text-orange-200 block mt-2">Herramienta avanzada activa · expande «Más herramientas» para cambiarla.</span>}
         </div>
 
         {/* Inspector Body */}
@@ -1660,6 +1660,10 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           {/* TAB 5: EMISIÓN A OBS */}
           {activeInspectorTab === 'broadcast' && (
             <div className="space-y-4">
+              <button type="button" onClick={onGoLive} className="w-full rounded-xl border border-[#FF6B00]/40 bg-[#FF6B00]/10 px-3 py-2.5 text-xs font-bold text-orange-200 hover:bg-[#FF6B00]/20">
+                Abrir En Vivo para controlar la gráfica →
+              </button>
+              <p className="text-xs text-slate-400">Editar o publicar un diseño no activa automáticamente su fuente OBS.</p>
               <span className="text-xs font-bold text-white uppercase tracking-wider block">
                 Integración con OBS Studio
               </span>
