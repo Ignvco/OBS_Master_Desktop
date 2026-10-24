@@ -911,7 +911,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           <div className="studio-topbar-publish">
             <div className="flex items-center gap-2 min-w-0">
               <span className="studio-stage-label">BORRADOR → PUBLICACIÓN</span>
-              <span className={`studio-version-pill ${publishedSelected?.visibleInOBS?'studio-version-live':''}`}>{publishedSelected?.visibleInOBS?'● AL AIRE':publishedSelected?'● Publicada':'Nunca publicada'}</span>
+              <span className={`studio-version-pill ${publishedSelected?.visibleInOBS?'studio-version-live':''}`}>{publishedSelected?.visibleInOBS?'● Marcada visible':publishedSelected?'● Publicada':'Nunca publicada'}</span>
               <span className={`studio-change-pill ${draftDifferent?'studio-change-pending':'studio-change-synced'}`}>{draftDifferent?'● Cambios pendientes':'✓ Sin cambios'}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -938,19 +938,19 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
               </div>
               </details>
               <button type="button" disabled={publicationBusy||saveStatus==='saving'||saveStatus==='error'||!draftDifferent||Boolean(publishedSelected?.visibleInOBS)}
-                title={publishedSelected?.visibleInOBS?'Retira primero la fuente del aire':saveStatus==='error'?'Soluciona primero el guardado del borrador':'Publicación explícita, con confirmación'}
+                title={publishedSelected?.visibleInOBS?'Oculta la gráfica desde En Vivo antes de publicar':saveStatus==='error'?'Soluciona primero el guardado del borrador':'Publicación explícita, con confirmación'}
                 className="studio-publish-cta" onClick={()=>void publishSelected()}><ShieldCheck size={14}/> {publicationBusy?'Publicando…':'Publicar diseño'}</button>
             </div>
           </div>
           <div className="ux-publication-explainer" role="note"><ShieldCheck size={13}/> Publicar actualiza el diseño utilizado por OBS; <strong>no muestra la gráfica al aire.</strong> Para operarla, abre En Vivo.</div>
 
           {publicationMessage&&<p role="alert" className="px-5 py-1.5 text-[11px] text-rose-300 bg-rose-500/10">{publicationMessage}</p>}
-          {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> EN VIVO: puedes seguir editando el borrador y recuperar versiones solo al borrador. Para publicar el diseño debes retirar primero la gráfica del aire.</div>}
+          {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> MARCADA VISIBLE EN OBS: puedes seguir editando y recuperar versiones solo al borrador. Oculta esta gráfica desde En Vivo antes de publicar. Verifica la señal real en OBS.</div>}
         </div>
         <div className="studio-view-controls shrink-0">
           {/* Settings for the canvas; do not compete with its main editing tools. */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" aria-expanded={showCanvasOptions}
+            <button type="button" aria-expanded={showCanvasOptions} title="Mostrar u ocultar las opciones visuales del lienzo; no afectan OBS"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-xs font-semibold text-slate-200 hover:bg-white/10"
               onClick={()=>setShowCanvasOptions(v=>!v)}>
               {showCanvasOptions?'Ocultar guías y fondo':'Guías y fondo'} <ChevronDown size={13} className={showCanvasOptions?'rotate-180':''}/>
