@@ -45,6 +45,7 @@ export default function App() {
   // Station Application State
   const [activeSpace, setActiveSpace] = useState<NavigationSpace>('inicio');
   const [studioFocusGraphic,setStudioFocusGraphic]=useState<string|null>(null);
+  const [liveFocusGraphic,setLiveFocusGraphic]=useState<string|null>(null);
   const [episode, setEpisode] = useState<EpisodeData>(() => StorageService.loadEpisode());
   const [components, setComponents] = useState<Record<ComponentType, EditorialComponentConfig>>(() =>
     StorageService.loadDraftComponents()
@@ -692,6 +693,7 @@ export default function App() {
             onToggleComponentVisibility={handleToggleComponentVisibility}
             onReplayGraphic={handleReplayGraphic}
             onEditGraphic={id=>{setStudioFocusGraphic(id);setActiveSpace('content-studio');}}
+            focusGraphicId={liveFocusGraphic}
             onHideAllComponents={handleHideAllComponents}
             onStartCountdown={handleStartCountdown}
             onPauseCountdown={handlePauseCountdown}
@@ -724,7 +726,7 @@ export default function App() {
             focusGraphicId={studioFocusGraphic}
             onToggleVisibility={handleToggleComponentVisibility}
             onSendToOBS={handleToggleComponentVisibility}
-            onGoLive={() => setActiveSpace('en-vivo')}
+            onGoLive={id => {setLiveFocusGraphic(id);setActiveSpace('en-vivo');}}
           />
         )}
 
