@@ -8,6 +8,8 @@
 **Entorno:** Windows x64, OBS Studio/OBS WebSocket v5, OBS Virtual Camera, StreamYard externo.
 **Estado del programa:** Dirección UX aprobada por el usuario; validación técnica de Windows y prueba real OBS todavía pendientes.
 
+**Incidente de empaquetado Windows (EPERM):** si `electron-builder` falla al renombrar `win-unpacked.tmp` a `win-unpacked`, no instalar un candidato incompleto. Consultar [SOLUCION_EPERM_ELECTRON_V42_WINDOWS.md](SOLUCION_EPERM_ELECTRON_V42_WINDOWS.md), cerrar editores que puedan bloquear ASAR y actualizar la rama UX. La preparación ahora ejecuta `LIMPIAR_STAGING_ELECTRON_UX_V42_WINDOWS.ps1` antes de empaquetar, sin borrar instaladores ni AppData.
+
 ## 1. Política de lanzamiento (sin GitHub Actions)
 
 No requiere pagar GitHub Actions. Todo ocurre en la computadora Windows:
