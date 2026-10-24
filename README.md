@@ -1,3 +1,5 @@
+> **Cierre y preparación de lanzamiento V4.2 UX (rama experimental):** el rediseño fue aprobado visualmente y el PR #8 permanece en borrador. Usar [PLAN_LANZAMIENTO_UX_V42.md](PLAN_LANZAMIENTO_UX_V42.md), [NOTAS_CANDIDATO_UX_V42.md](NOTAS_CANDIDATO_UX_V42.md) y `PREPARAR_CANDIDATO_UX_V42_WINDOWS.bat` para generar un candidato local, sin GitHub Actions ni instalación automática. **QA Windows/OBS real pendiente.** No reemplazar la instalación operativa ni fusionar a `main` antes de las validaciones.
+
 > **Actualización v4.2 RC1 — Fase 1 + Fase 2 / revisión En Vivo e Historial.** Consultar `VALIDACION_V42_WINDOWS.md` y `PROBAR_V42_WINDOWS.bat`. Las publicaciones y recuperaciones ya no generan snapshots. Sin integraciones/exportaciones adicionales.
 
 > **Actualización 4.1 RC1 (Fases 1 y 2):** consultar `LEEME_V41_FASES_1_Y_2.md` y `PROBAR_V41_FASES_1_2_WINDOWS.bat`. No se ha implementado ninguna integración/exportación adicional.
