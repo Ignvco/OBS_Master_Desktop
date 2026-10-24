@@ -48,7 +48,7 @@ test('UX V4.2: controls never advertise an unverified video monitor as real vide
   assert.ok(live.includes('Representación de estado · no muestra video'));
   assert.ok(live.includes('verificar video en OBS'));
   assert.ok(home.includes('no confirman audio, imagen ni emisión pública'));
-  assert.ok(header.includes('Cámara virtual OBS activa (emisión externa no confirmada)'));
+  assert.ok(header.includes('Cámara virtual de OBS activa (emisión externa no confirmada)'));
 });
 
 test('UX V4.2: scene preparation, protection and transition restrictions remain visible',()=>{
