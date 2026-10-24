@@ -1,0 +1,13 @@
+{
+  "files.watcherExclude": {
+    "**/desktop-app/release/**": true,
+    "**/desktop-app/dist/**": true,
+    "**/desktop-app/compiled/**": true,
+    "**/desktop-app/node_modules/**": true
+  },
+  "search.exclude": {
+    "**/desktop-app/release/**": true,
+    "**/desktop-app/dist/**": true,
+    "**/desktop-app/compiled/**": true
+  }
+}
