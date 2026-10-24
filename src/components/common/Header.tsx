@@ -13,7 +13,6 @@ import {
   ListCheck, 
   FolderKanban, 
   Sparkles,
-  Settings2,
   ExternalLink,
   Download
 } from 'lucide-react';
@@ -99,10 +98,9 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
               <span>{space.label}</span>
               {space.id === 'en-vivo' && obsStatus.virtualCamActive && (
-                <span className="relative flex h-2 w-2 ml-0.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                </span>
+                <span className="flex h-2 w-2 ml-0.5 rounded-full bg-sky-400"
+                  title="Cámara virtual de OBS activa (emisión externa no confirmada)"
+                  aria-label="Cámara virtual OBS activa" />
               )}
             </button>
           );
@@ -179,10 +177,6 @@ export const Header: React.FC<HeaderProps> = ({
             <ShieldAlert className="w-4 h-4 text-slate-400" />
           )}
           <span className="hidden 2xl:inline text-xs ml-1">{isProtectedMode ? 'Protección activa' : 'Sin protección'}</span>
-        </button>
-        <button type="button" onClick={onOpenConnectionModal} title="Abrir ajustes de conexión con OBS" aria-label="Ajustes de conexión OBS"
-          className="px-2.5 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
-          <Settings2 className="w-4 h-4" />
         </button>
       </div>
     </header>
