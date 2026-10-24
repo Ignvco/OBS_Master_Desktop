@@ -84,10 +84,9 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
     catch { return true; }
   });
   const toggleGuide = () => {
-    setShowGuide(current => {
-      try { localStorage.setItem('stdq-v42-ux-guide-dismissed-v1', current ? '1' : '0'); } catch {}
-      return !current;
-    });
+    const next = !showGuide;
+    setShowGuide(next);
+    try { localStorage.setItem('stdq-v42-ux-guide-dismissed-v1', next ? '0' : '1'); } catch {}
   };
   // Compute health score
   const activeComponentsCount = [...Object.values(components),...Object.values(customComponents)].filter(c => c.visibleInOBS).length;
