@@ -44,6 +44,7 @@ interface BroadcastControlSpaceProps {
   scenePending: boolean;
   liveFeedback: string;
   focusGraphicId?: string | null;
+  onClearGraphicFocus: () => void;
   onSetPreviewScene: (sceneName: string) => void;
   onSetProgramScene: (sceneName: string) => void;
   onExecuteTransition: (transitionType?: string) => void;
@@ -72,6 +73,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   scenePending,
   liveFeedback,
   focusGraphicId,
+  onClearGraphicFocus,
   onSetPreviewScene,
   onSetProgramScene,
   onExecuteTransition,
@@ -237,6 +239,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <button
             disabled={!obsStatus.connected || transitionPending}
             onClick={onToggleStudioMode}
+            aria-pressed={obsStatus.studioMode}
+            title={obsStatus.studioMode?'Modo Estudio activo: elegir escenas prepara Preview':'Modo Estudio desactivado: elegir escenas puede cambiar Program directamente'}
             className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
               obsStatus.studioMode
                 ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm shadow-purple-500/20'
@@ -260,9 +264,16 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         </div>
       </div>
 
+      {focusGraphicId && focusExists && <div role="status" className="rounded-xl border border-orange-400/30 bg-orange-400/[0.06] px-4 py-3 text-xs text-orange-100 flex flex-wrap items-center justify-between gap-2">
+        <span>Gráfica seleccionada: <strong>{customComponents[focusGraphicId]?.name || components[focusGraphicId as ComponentType]?.name || focusGraphicId}</strong>. Revisa su estado y utiliza «Mostrar en Program» únicamente cuando quieras activarla.</span>
+        <button type="button" className="font-bold underline hover:text-white" onClick={onClearGraphicFocus}>Quitar selección</button>
+      </div>}
       {focusGraphicId && !focusExists && <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex flex-wrap items-center justify-between gap-2">
         <span>La gráfica seleccionada todavía no está publicada para En Vivo. Publica su diseño desde Diseñar antes de vincularla a OBS.</span>
-        <button type="button" className="font-bold underline" onClick={()=>onEditGraphic(focusGraphicId)}>Volver a Diseñar</button>
+        <div className="flex items-center gap-4">
+          <button type="button" className="font-bold underline" onClick={()=>onEditGraphic(focusGraphicId)}>Volver a Diseñar</button>
+          <button type="button" className="font-bold underline" onClick={onClearGraphicFocus}>Cerrar aviso</button>
+        </div>
       </div>}
       <div className="live-production-status" role="status">
         <div><span>CONEXIÓN OBS</span><strong>{obsStatus.connected?'Control disponible':'OBS desconectado'}</strong></div>
@@ -299,7 +310,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                   onClick={() => handleSceneSelect(scene.name)}
                   title={obsStatus.studioMode ? `Preparar «${scene.name}» en Preview sin cambiar Program` : isProtectedMode ? 'Modo Protegido impide cambiar Program directamente' : `Enviar «${scene.name}» directamente a Program (Modo Estudio desactivado)`}
                   aria-label={obsStatus.studioMode ? `Preparar escena ${scene.name} en Preview` : `Enviar escena ${scene.name} directamente a Program`}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+                  className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 ${
                     isProgram
                       ? 'bg-rose-500/20 border-rose-500 text-white shadow-md'
                       : isPreview
@@ -460,7 +471,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <button
             disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
             onClick={() => onExecuteTransition(activeTransition)}
-            className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
           >{transitionPending ? 'Transición en curso…' : `Enviar ${obsStatus.currentPreviewScene || 'Preview'} a Program · ${activeTransition || 'transición'}`}</button>
         </div>
         {!obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
@@ -474,7 +485,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         <div className="p-4 md:p-5 glass-panel rounded-2xl border border-white/10 space-y-3.5">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length} componentes)</h3>
+              <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length})</h3>
               <p className="text-xs text-slate-400">Activa u oculta cada fuente gráfica en la escena Program de OBS. La tarjeta informativa no emite.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
@@ -546,9 +557,15 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                     onClick={() => onToggleComponentVisibility(c.type, linked || source?.name)}
                     aria-label={`${pending?'Aplicando':isLive?'Ocultar de Program':'Mostrar en Program'}: ${c.label}`}
                     title={source ? `Fuente OBS: ${source.name} · Escena Program: ${obsStatus.currentProgramScene}` : 'No hay una fuente de navegador válida para esta gráfica en Program'}
-                    className={`w-full min-h-9 rounded-lg px-2 py-2 text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isLive?'bg-rose-500/15 border-rose-500/40 text-rose-100 hover:bg-rose-500/25':'bg-[#FF6B00] border-[#FF6B00] text-[#1A0A00] hover:bg-[#FF8B45]'}`}>
+                    className={`w-full min-h-9 rounded-lg px-2 py-2 text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 ${isLive?'bg-rose-500/15 border-rose-500/40 text-rose-100 hover:bg-rose-500/25':'bg-[#FF6B00] border-[#FF6B00] text-[#1A0A00] hover:bg-[#FF8B45]'}`}>
                     {pending?'Aplicando…':isLive?'Ocultar de Program':'Mostrar en Program'}
                   </button>
+                  {obsStatus.connected && program && !source && <button type="button"
+                    onClick={()=>{setEditLinks(true);setDetailGraphic(c.type);}}
+                    className="w-full px-2 py-2 rounded-lg border border-amber-400/25 bg-amber-400/10 text-amber-200 text-[11px] font-semibold hover:bg-amber-400/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400"
+                    title="Revisar o vincular una fuente de navegador válida de esta gráfica en la escena Program">
+                    {matches.length>1?'Resolver vínculo ambiguo':'Revisar fuente OBS'}
+                  </button>}
                   <div className="live-graphic-actions">
                     <button type="button" onClick={()=>onEditGraphic(c.type)} title="Abrir esta gráfica en Content Studio">Editar</button>
                     <button type="button" onClick={()=>setDetailGraphic(old=>old===c.type?null:c.type)} aria-expanded={detailGraphic===c.type}>Detalles</button>
