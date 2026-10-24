@@ -140,6 +140,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
   const [comparePublished,setComparePublished] = useState(false);
   const [commandOpen,setCommandOpen] = useState(false);
   const [showAdvancedInspector, setShowAdvancedInspector] = useState(false);
+  const [showCanvasOptions, setShowCanvasOptions] = useState(false);
   // A comparison belongs to the current document only; never carry its locks
   // or preview styling over when another graphic is selected.
   useEffect(() => { setComparePublished(false); setPreviewOnly(false); setHistoryActionsOpen(false);setHistorySelection(''); }, [selectionKey]);
@@ -264,6 +265,10 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
   const previewMotion=componentMotionProps(canvasConfig.animation);
   useEffect(()=>{setSelectedLayerId(null);setSelectedIds([]);setLayerRect(null);clearSequence();setPreviewPhase('show');setTimelineReplay(v=>v+1);},[selectedType,selectedCustomId]);
   const [activeInspectorTab, setActiveInspectorTab] = useState<'smart' | 'content' | 'design' | 'geometry' | 'animation' | 'branding' | 'broadcast' | 'layers'>('smart');
+  // Programmatic inspector navigation may open an advanced panel; never hide its active tab.
+  useEffect(() => {
+    if (['design','geometry','branding','broadcast'].includes(activeInspectorTab)) setShowAdvancedInspector(true);
+  }, [activeInspectorTab]);
   const [showSafeZones, setShowSafeZones] = useState(initialWorkspace.safeZones);
   const [showGrid, setShowGrid] = useState(initialWorkspace.grid);
   const [canvasBg, setCanvasBg] = useState<'dark' | 'transparent' | 'camera'>(initialWorkspace.background);
@@ -786,12 +791,12 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#FF6B00]" />
             <h2 className="text-xs font-bold text-white uppercase tracking-wider">
-              Studio / Assets
+              Mis gráficas y plantillas
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">15 plantillas + {Object.keys(customComponents).length} gráficas independientes</p>
+          <p className="text-[11px] text-slate-400 mt-1">{Object.keys(components).length} plantillas · {Object.keys(customComponents).length} gráficas propias</p>
           <button type="button" className="w-full rounded-lg mt-3 bg-[#FF6B00]/15 border border-[#FF6B00]/50 px-3 py-2 text-xs font-bold text-orange-200 hover:bg-[#FF6B00]/25" onClick={()=>setCreateOpen(v=>!v)}>
-            + Nueva gráfica independiente
+            + Crear una gráfica
           </button>
           {createOpen && <form onSubmit={submitNewGraphic} className="mt-3 space-y-2 rounded-xl bg-black/35 p-3 border border-white/10">
             <label className="block text-[11px] text-slate-300">Nombre de la gráfica</label>
@@ -884,7 +889,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           <div className="studio-topbar-primary">
             <div className="flex items-center gap-3 min-w-0">
               <div className="studio-app-mark"><Sparkles size={15}/></div>
-              <div className="min-w-0"><div className="studio-eyebrow">CONTENT STUDIO <span className="mx-1.5 opacity-40">/</span> V4.2</div>
+              <div className="min-w-0"><div className="studio-eyebrow">DISEÑAR <span className="mx-1.5 opacity-40">/</span> CONTENT STUDIO V4.2</div>
                 <div className="text-sm font-semibold text-white truncate" title={selectedConfig.name}>{selectedConfig.name}</div></div>
               {selectedCustomId && <button type="button" className="studio-subtle-action" onClick={()=>{
                 const name=window.prompt('Nombre de esta gráfica independiente',selectedConfig.name);
@@ -905,7 +910,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           </div>
           <div className="studio-topbar-publish">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="studio-stage-label">DISEÑO Y PUBLICACIÓN</span>
+              <span className="studio-stage-label">BORRADOR → PUBLICACIÓN</span>
               <span className={`studio-version-pill ${publishedSelected?.visibleInOBS?'studio-version-live':''}`}>{publishedSelected?.visibleInOBS?'● AL AIRE':publishedSelected?'● Publicada':'Nunca publicada'}</span>
               <span className={`studio-change-pill ${draftDifferent?'studio-change-pending':'studio-change-synced'}`}>{draftDifferent?'● Cambios pendientes':'✓ Sin cambios'}</span>
             </div>
@@ -943,8 +948,14 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> EN VIVO: puedes seguir editando el borrador y recuperar versiones solo al borrador. Para publicar el diseño debes retirar primero la gráfica del aire.</div>}
         </div>
         <div className="studio-view-controls shrink-0">
-          {/* Viewport & Guide Toggles */}
+          {/* Settings for the canvas; do not compete with its main editing tools. */}
           <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" aria-expanded={showCanvasOptions}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-xs font-semibold text-slate-200 hover:bg-white/10"
+              onClick={()=>setShowCanvasOptions(v=>!v)}>
+              {showCanvasOptions?'Ocultar guías y fondo':'Guías y fondo'} <ChevronDown size={13} className={showCanvasOptions?'rotate-180':''}/>
+            </button>
+            {showCanvasOptions && <>
             <button
               onClick={() => setShowSafeZones(!showSafeZones)}
               className={`px-2.5 py-1 text-xs rounded-lg font-medium border transition-colors ${
@@ -994,6 +1005,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
 
             <div className="h-4 w-px bg-white/10 mx-1" />
 
+            </>}
             {/* Editorial handoff: live visibility is controlled in the realization workspace. */}
             <button type="button" onClick={onGoLive}
               title="Abrir la mesa En Vivo para mostrar u ocultar gráficas en OBS"
@@ -1302,8 +1314,6 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
               </button>
             ))}
           </div>}
-          {!showAdvancedInspector && ['design','geometry','branding','broadcast'].includes(activeInspectorTab) &&
-            <span className="text-[11px] text-orange-200 block mt-2">Herramienta avanzada activa · expande «Más herramientas» para cambiarla.</span>}
         </div>
 
         {/* Inspector Body */}
