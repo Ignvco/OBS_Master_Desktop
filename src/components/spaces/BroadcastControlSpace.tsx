@@ -153,6 +153,20 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
     { type: 'outro', label: 'Pantalla Cierre', icon: '🎬' },
   ];
 
+  // Presentation-only filters: do not modify any OBS source or publication state.
+  const displayedGraphics = [
+    ...componentLabels,
+    ...Object.values(customComponents).map(config=>({type:config.instanceId!,label:config.name,icon:'✦'})),
+  ].filter(c=>{
+    const config = customComponents[c.type] || components[c.type as ComponentType];
+    if (!config || !c.label.toLocaleLowerCase('es').includes(graphicSearch.trim().toLocaleLowerCase('es'))) return false;
+    const matches = matchingLiveSources(programSources,config,config.type,linkedSource(config));
+    const source = matches.length===1 && matches[0].type==='browser_source' ? matches[0] : null;
+    const live = !!config.visibleInOBS && !!source?.enabled;
+    const needsAttention = !obsStatus.connected || !program || !source || !!(config.visibleInOBS && !source.enabled);
+    return graphicFilter==='all' || (graphicFilter==='visible' && live) || (graphicFilter==='issues' && needsAttention);
+  });
+
   const handleSceneSelect = (sceneName: string) => {
     if (obsStatus.studioMode) {
       onSetPreviewScene(sceneName);
@@ -169,8 +183,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="relative flex h-3 w-3">
-              {obsStatus.connected&&<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"/>}
-              <span className={`relative inline-flex rounded-full h-3 w-3 ${obsStatus.connected?'bg-rose-600':'bg-slate-500'}`}></span>
+              {obsStatus.connected&&<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-40"/>}
+              <span className={`relative inline-flex rounded-full h-3 w-3 ${obsStatus.connected?'bg-emerald-500':'bg-slate-500'}`}></span>
             </span>
             <span className="text-xs font-extrabold uppercase tracking-widest text-white">
               En Vivo · Mesa de realización
@@ -224,8 +238,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         <button type="button" className="font-bold underline" onClick={()=>onEditGraphic(focusGraphicId)}>Volver a Diseñar</button>
       </div>}
       <div className="live-production-status" role="status">
-        <div><span>SEÑAL</span><strong>{obsStatus.connected?'Control OBS conectado':'Fuera de conexión'}</strong></div>
-        <div><span>ESCENARIO PROGRAM</span><strong>{obsStatus.currentProgramScene||'Sin detectar'}</strong></div>
+        <div><span>CONEXIÓN OBS</span><strong>{obsStatus.connected?'Control disponible':'OBS desconectado'}</strong></div>
+        <div><span>ESCENA EN PROGRAM</span><strong>{obsStatus.currentProgramScene||'Sin detectar'}</strong></div>
         <div><span>MODO ESTUDIO</span><strong>{obsStatus.studioMode?'Preview protegido':'Cambio directo de escenas'}</strong></div>
         <div><span>PROTECCIÓN</span><strong>{isProtectedMode?'Acciones directas protegidas':'Modo protegido desactivado'}</strong></div>
         <div><span>OPERACIONES</span><strong>{pendingComponents.length?`${pendingComponents.length} en curso`:'Sin operaciones pendientes'}</strong></div>
@@ -329,7 +343,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           {/* Program Footer */}
           <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between text-xs text-slate-300">
             <span>Estado de salida OBS · Verificar en monitor real</span>
-            <span className="font-semibold text-emerald-400">
+            <span className={`font-semibold ${obsStatus.virtualCamActive?'text-sky-300':'text-slate-400'}`}>
               {obsStatus.virtualCamActive ? 'Cámara virtual OBS activa' : 'Cámara virtual OBS inactiva'}
             </span>
           </div>
@@ -468,9 +482,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             <span className="text-slate-400">Datos de fuentes OBS; video no verificado</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
-            {[...componentLabels, ...Object.values(customComponents).map(config=>({type:config.instanceId!,label:config.name,icon:'✦'}))].map((c) => {
+            {displayedGraphics.map((c) => {
               const config = customComponents[c.type] || components[c.type as ComponentType];
-              if (!config || !c.label.toLocaleLowerCase('es').includes(graphicSearch.trim().toLocaleLowerCase('es'))) return null;
+              if (!config) return null;
               const linked = linkedSource(config);
               // Custom graphics MUST be explicitly linked to the browser source with their own URL.
               const matches = matchingLiveSources(programSources, config, config.type, linked);
@@ -478,9 +492,6 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               const pending = pendingComponents.includes(c.type);
               const unavailable = !obsStatus.connected || !program || !source;
               const isLive = !!config.visibleInOBS && !!source?.enabled;
-              const needsAttention = !obsStatus.connected || !program || !source || !!(config.visibleInOBS && !source.enabled);
-              if (graphicFilter==='visible' && !isLive) return null;
-              if (graphicFilter==='issues' && !needsAttention) return null;
               const status = !obsStatus.connected ? 'OBS DESCONECTADO'
                 : !program ? 'SIN ESCENA PROGRAM'
                 : !source ? matches.length > 1 ? 'VÍNCULO AMBIGUO' : 'FUENTE NO VINCULADA'
@@ -542,6 +553,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               );
             })}
           </div>
+          {displayedGraphics.length===0 && <p role="status" className="rounded-xl border border-white/10 bg-white/[0.025] p-5 text-center text-xs text-slate-300">
+            No hay gráficas que coincidan con el filtro actual. Prueba «Todas» o borra la búsqueda.
+          </p>}
           {editLinks && <p className="text-xs text-amber-200">Si una gráfica aparece como «Fuente no vinculada», agrégala como fuente de navegador a la escena de OBS o selecciona su nombre exacto. Los vínculos se guardan localmente por escena.</p>}
         </div>
       </div>
