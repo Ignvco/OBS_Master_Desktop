@@ -170,7 +170,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
     ...Object.values(customComponents).map(config=>({type:config.instanceId!,label:config.name,icon:'✦'})),
   ].filter(c=>{
     const config = customComponents[c.type] || components[c.type as ComponentType];
-    if (!config || !c.label.toLocaleLowerCase('es').includes(graphicSearch.trim().toLocaleLowerCase('es'))) return false;
+    if (!config) return false;
+    const searchLabel = `${c.label} ${config.name}`.toLocaleLowerCase('es');
+    if (!searchLabel.includes(graphicSearch.trim().toLocaleLowerCase('es'))) return false;
     const matches = matchingLiveSources(programSources,config,config.type,linkedSource(config));
     const source = matches.length===1 && matches[0].type==='browser_source' ? matches[0] : null;
     const live = !!config.visibleInOBS && !!source?.enabled;
