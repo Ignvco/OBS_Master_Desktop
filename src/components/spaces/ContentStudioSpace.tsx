@@ -1298,7 +1298,10 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
             ))}
           </div>
           <button type="button" className="ux-advanced-trigger" aria-expanded={showAdvancedInspector}
-            onClick={()=>setShowAdvancedInspector(v=>!v)}>
+            onClick={()=>{
+              if(showAdvancedInspector && ['design','geometry','branding','broadcast'].includes(activeInspectorTab)) setActiveInspectorTab('smart');
+              setShowAdvancedInspector(v=>!v);
+            }}>
             Más herramientas: texto, forma, logo y OBS <ChevronDown size={13} className={showAdvancedInspector?'rotate-180':''}/>
           </button>
           {showAdvancedInspector && <div className="studio-inspector-tabs ux-advanced-tabs" role="group" aria-label="Herramientas avanzadas">
