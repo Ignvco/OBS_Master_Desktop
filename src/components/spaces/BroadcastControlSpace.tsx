@@ -95,6 +95,15 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   const [selectedTransition, setSelectedTransition] = useState('');
   const [detailGraphic,setDetailGraphic]=useState<string|null>(null);
   const [graphicSearch,setGraphicSearch] = useState('');
+  const [compactDesk,setCompactDesk] = useState(() => {
+    try { return localStorage.getItem('stdq-v42-live-compact-v1') !== '0'; }
+    catch { return true; }
+  });
+  const toggleCompactDesk = () => {
+    const next = !compactDesk;
+    setCompactDesk(next);
+    try { localStorage.setItem('stdq-v42-live-compact-v1', next ? '1' : '0'); } catch {}
+  };
   const [graphicFilter,setGraphicFilter] = useState<'all'|'visible'|'issues'>('all');
   const focusedGraphicRef = useRef<HTMLDivElement>(null);
   const program = obsStatus.scenes.find(scene => scene.name === obsStatus.currentProgramScene);
@@ -206,6 +215,11 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          <button type="button" aria-pressed={compactDesk} onClick={toggleCompactDesk}
+            className="px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10 text-xs font-semibold transition-colors"
+            title="Cambiar altura de los monitores esquemáticos sin afectar video ni OBS">
+            {compactDesk ? 'Ampliar monitores' : 'Compactar monitores'}
+          </button>
           {/* Studio Mode Toggle */}
           <button
             disabled={!obsStatus.connected || transitionPending}
@@ -244,147 +258,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         <div><span>PROTECCIÓN</span><strong>{isProtectedMode?'Acciones directas protegidas':'Modo protegido desactivado'}</strong></div>
         <div><span>OPERACIONES</span><strong>{pendingComponents.length?`${pendingComponents.length} en curso`:'Sin operaciones pendientes'}</strong></div>
       </div>
-      {/* DUAL MONITORS: PREVIEW & PROGRAM */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PREVIEW MONITOR (GREEN TALLY) */}
-        <div className="rounded-2xl glass-panel-elevated border-2 border-emerald-500/50 overflow-hidden shadow-2xl flex flex-col">
-          {/* Monitor Top Bar */}
-          <div className="px-4 py-2.5 bg-emerald-950/40 border-b border-emerald-500/30 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
-                PREVIEW (PREPARACIÓN)
-              </span>
-            </div>
-            <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
-              {obsStatus.currentPreviewScene}
-            </span>
-          </div>
-
-          {/* Monitor Screen Frame (16:9 Aspect Ratio) */}
-          <div className="relative aspect-video bg-[#050608] monitor-grid flex items-center justify-center overflow-hidden">
-            {/* Screen Content Mock Representation */}
-            <div className="text-center space-y-2 p-6 z-10">
-              <Tv className="w-10 h-10 text-emerald-400/40 mx-auto" />
-              <div className="text-base font-bold text-white tracking-tight">
-                {obsStatus.currentPreviewScene}
-              </div>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Escena en preparación. Representación esquemática (no es imagen real). Al confirmar la transición, OBS cambia su señal Program.
-              </p>
-            </div>
-
-            {/* Corner Badge */}
-            <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/80 border border-emerald-500/30 text-[10px] text-emerald-400 font-mono">
-              STANDBY
-            </div>
-          </div>
-
-          {/* Preview Quick Action Footer */}
-          <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-slate-300">{obsStatus.studioMode ? 'Escena indicada en Preview · no está en Program' : 'Modo Estudio desactivado · selección directa a Program'}</span>
-            <span className="text-[11px] text-emerald-300 font-semibold">Transición en el control inferior ↓</span>
-          </div>
-        </div>
-
-        {/* PROGRAM MONITOR (RED TALLY ON-AIR) */}
-        <div className="rounded-2xl glass-panel-elevated border-2 border-rose-500 overflow-hidden shadow-2xl flex flex-col">
-          {/* Monitor Top Bar */}
-          <div className="px-4 py-2.5 bg-rose-950/40 border-b border-rose-500/40 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-              </span>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-rose-300">
-                PROGRAM (SALIDA OBS)
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
-                SALIDA OBS
-              </span>
-              <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
-                {obsStatus.currentProgramScene}
-              </span>
-            </div>
-          </div>
-
-          {/* Monitor Screen Frame (16:9 Aspect Ratio) */}
-          <div className="relative aspect-video bg-[#050608] monitor-grid flex items-center justify-center overflow-hidden">
-            {/* Screen Content Mock Representation */}
-            <div className="text-center space-y-2 p-6 z-10">
-              <Tv className="w-10 h-10 text-rose-500/60 mx-auto animate-pulse" />
-              <div className="text-base font-bold text-white tracking-tight">
-                {obsStatus.currentProgramScene}
-              </div>
-              <p className="text-xs text-slate-300 max-w-sm mx-auto">
-                Vista esquemática de Program, no video real. Confirma la señal en el monitor de OBS.
-              </p>
-            </div>
-
-            {/* Active Graphic Overlays Indicators on Program */}
-            <div className="absolute top-3 left-3 flex flex-wrap gap-1 max-w-[70%]">
-              {[...Object.values(components),...Object.values(customComponents)]
-                .filter(c => c.visibleInOBS && matchingLiveSources(programSources, c, c.type, linkedSource(c)).some(source => source.enabled && source.type === 'browser_source'))
-                .map(c => (
-                  <span key={c.id} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/80 text-rose-300 border border-rose-500/30">
-                    ● {c.name}
-                  </span>
-                ))}
-            </div>
-
-            {/* Corner Badge */}
-            <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-rose-500/30 text-[10px] text-rose-400 font-mono font-bold">
-              FORMATO NO VERIFICADO
-            </div>
-          </div>
-
-          {/* Program Footer */}
-          <div className="p-3 bg-black/40 border-t border-white/5 flex items-center justify-between text-xs text-slate-300">
-            <span>Estado de salida OBS · Verificar en monitor real</span>
-            <span className={`font-semibold ${obsStatus.virtualCamActive?'text-sky-300':'text-slate-400'}`}>
-              {obsStatus.virtualCamActive ? 'Cámara virtual OBS activa' : 'Cámara virtual OBS inactiva'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* OBS reports available transition names. Never send guessed presets. */}
-      <section className="p-5 glass-panel rounded-2xl border border-white/10 space-y-3" aria-label="Transiciones OBS">
-        <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-white">Transiciones de OBS</h3>
-            <p className="text-xs text-slate-400">Solo se muestran las transiciones realmente instaladas. Un clic ejecuta una transición confirmada.</p>
-          </div>
-          <span className="text-[11px] text-slate-400 font-mono">{obsStatus.studioMode ? 'MODO ESTUDIO ACTIVO' : 'ACTIVA MODO ESTUDIO'}</span>
-        </div>
-        <div className="flex gap-2 flex-wrap items-center">
-          <select
-            value={activeTransition}
-            onChange={event => setSelectedTransition(event.target.value)}
-            disabled={!obsStatus.connected || !availableTransitions.length || transitionPending}
-            className="rounded-xl bg-slate-800 border border-white/20 text-white text-sm px-3 py-2 min-w-[180px] disabled:opacity-50"
-            aria-label="Transición instalada en OBS"
-          >
-            {!availableTransitions.length && <option value="">Sin transiciones detectadas</option>}
-            {availableTransitions.map(name => <option key={name} value={name}>{name}</option>)}
-          </select>
-          <button
-            disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
-            onClick={() => onExecuteTransition(activeTransition)}
-            className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >{transitionPending ? 'Transición en curso…' : `Enviar ${obsStatus.currentPreviewScene || 'Preview'} a Program · ${activeTransition || 'transición'}`}</button>
-        </div>
-        {!obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
-        {obsStatus.studioMode && availableTransitions.length === 0 && <p className="text-amber-300 text-xs">No se recibió el catálogo de transiciones de OBS. Comprueba la conexión o vuelve a conectar.</p>}
-        <div role="status" aria-live="polite" className="text-xs text-slate-300 border-t border-white/10 pt-2">{liveFeedback}</div>
-      </section>
-
-      {/* LOWER SECTION: SCENE SWITCHER & LIVE GRAPHIC TALLY BUTTONS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left 5 Cols: Scene Switcher Matrix */}
-        <div className="lg:col-span-5 p-5 glass-panel rounded-2xl border border-white/10 space-y-3.5 flex flex-col justify-between">
+      {/* Fast scene selection is accessible before the large status representations. */}
+        {/* Scene selector — immediate access before the monitors */}
+        <div className="p-4 md:p-5 glass-panel rounded-2xl border border-white/10 space-y-3">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-white tracking-tight">Selector de Escenas OBS</h3>
@@ -395,7 +271,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 pt-1 max-h-[190px] overflow-y-auto pr-1">
             {obsStatus.scenes.map((scene) => {
               const isProgram = obsStatus.currentProgramScene === scene.name;
               const isPreview = obsStatus.currentPreviewScene === scene.name;
@@ -440,8 +316,148 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           </div>
         </div>
 
-        {/* Right 7 Cols: Quick Overlays Tally Pad (13 Graphics) */}
-        <div className="lg:col-span-7 p-5 glass-panel rounded-2xl border border-white/10 space-y-3.5">
+
+      {/* DUAL MONITORS: PREVIEW & PROGRAM */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+        {/* PREVIEW MONITOR (GREEN TALLY) */}
+        <div className="rounded-2xl glass-panel-elevated border-2 border-emerald-500/50 overflow-hidden shadow-2xl flex flex-col">
+          {/* Monitor Top Bar */}
+          <div className="px-4 py-2.5 bg-emerald-950/40 border-b border-emerald-500/30 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
+                PREVIEW (PREPARACIÓN)
+              </span>
+            </div>
+            <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
+              {obsStatus.currentPreviewScene}
+            </span>
+          </div>
+
+          {/* Monitor Screen Frame (16:9 Aspect Ratio) */}
+          <div className={`relative bg-[#050608] monitor-grid flex items-center justify-center overflow-hidden ${compactDesk?'h-[130px] lg:h-[155px]':'aspect-video'}`}>
+            {/* Screen Content Mock Representation */}
+            <div className={`text-center z-10 ${compactDesk?'space-y-1 px-3 py-2':'space-y-2 p-6'}`}>
+              <Tv className={`${compactDesk?'w-5 h-5':'w-10 h-10'} text-emerald-400/40 mx-auto`} />
+              <div className="text-base font-bold text-white tracking-tight">
+                {obsStatus.currentPreviewScene}
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                {compactDesk?'Representación de estado · no muestra video': 'Escena en preparación. Representación esquemática (no es imagen real). Al confirmar la transición, OBS cambia su señal Program.'}
+              </p>
+            </div>
+
+            {/* Corner Badge */}
+            <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/80 border border-emerald-500/30 text-[10px] text-emerald-400 font-mono">
+              STANDBY
+            </div>
+          </div>
+
+          {/* Preview Quick Action Footer */}
+          <div className="p-2.5 bg-black/40 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-xs text-slate-300">{obsStatus.studioMode ? 'Escena indicada en Preview · no está en Program' : 'Modo Estudio desactivado · selección directa a Program'}</span>
+            <span className="text-[11px] text-emerald-300 font-semibold">Transición en el control inferior ↓</span>
+          </div>
+        </div>
+
+        {/* PROGRAM MONITOR (RED TALLY ON-AIR) */}
+        <div className="rounded-2xl glass-panel-elevated border-2 border-rose-500 overflow-hidden shadow-2xl flex flex-col">
+          {/* Monitor Top Bar */}
+          <div className="px-4 py-2.5 bg-rose-950/40 border-b border-rose-500/40 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+              </span>
+              <span className="text-xs font-extrabold uppercase tracking-wider text-rose-300">
+                PROGRAM (SALIDA OBS)
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
+                SALIDA OBS
+              </span>
+              <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
+                {obsStatus.currentProgramScene}
+              </span>
+            </div>
+          </div>
+
+          {/* Monitor Screen Frame (16:9 Aspect Ratio) */}
+          <div className={`relative bg-[#050608] monitor-grid flex items-center justify-center overflow-hidden ${compactDesk?'h-[130px] lg:h-[155px]':'aspect-video'}`}>
+            {/* Screen Content Mock Representation */}
+            <div className={`text-center z-10 ${compactDesk?'space-y-1 px-3 py-2':'space-y-2 p-6'}`}>
+              <Tv className={`${compactDesk?'w-5 h-5':'w-10 h-10'} text-rose-500/60 mx-auto`} />
+              <div className="text-base font-bold text-white tracking-tight">
+                {obsStatus.currentProgramScene}
+              </div>
+              <p className="text-xs text-slate-300 max-w-sm mx-auto">
+                {compactDesk?'Representación de estado · confirmar en OBS': 'Vista esquemática de Program, no video real. Confirma la señal en el monitor de OBS.'}
+              </p>
+            </div>
+
+            {/* Active Graphic Overlays Indicators on Program */}
+            <div className={`absolute top-2 left-2 flex flex-wrap gap-1 ${compactDesk?'max-w-[48%] max-h-12 overflow-hidden':'max-w-[70%]'}`}>
+              {[...Object.values(components),...Object.values(customComponents)]
+                .filter(c => c.visibleInOBS && matchingLiveSources(programSources, c, c.type, linkedSource(c)).some(source => source.enabled && source.type === 'browser_source'))
+                .map(c => (
+                  <span key={c.id} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/80 text-rose-300 border border-rose-500/30">
+                    ● {c.name}
+                  </span>
+                ))}
+            </div>
+
+            {/* Corner Badge */}
+            <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/80 border border-rose-500/30 text-[10px] text-rose-400 font-mono font-bold">
+              FORMATO NO VERIFICADO
+            </div>
+          </div>
+
+          {/* Program Footer */}
+          <div className="p-2.5 bg-black/40 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap text-xs text-slate-300">
+            <span>Estado de salida OBS · Verificar en monitor real</span>
+            <span className={`font-semibold ${obsStatus.virtualCamActive?'text-sky-300':'text-slate-400'}`}>
+              {obsStatus.virtualCamActive ? 'Cámara virtual OBS activa' : 'Cámara virtual OBS inactiva'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* OBS reports available transition names. Never send guessed presets. */}
+      <section className="p-5 glass-panel rounded-2xl border border-white/10 space-y-3" aria-label="Transiciones OBS">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-white">Transiciones de OBS</h3>
+            <p className="text-xs text-slate-400">Solo se muestran las transiciones realmente instaladas. Un clic ejecuta una transición confirmada.</p>
+          </div>
+          <span className="text-[11px] text-slate-400 font-mono">{obsStatus.studioMode ? 'MODO ESTUDIO ACTIVO' : 'ACTIVA MODO ESTUDIO'}</span>
+        </div>
+        <div className="flex gap-2 flex-wrap items-center">
+          <select
+            value={activeTransition}
+            onChange={event => setSelectedTransition(event.target.value)}
+            disabled={!obsStatus.connected || !availableTransitions.length || transitionPending}
+            className="rounded-xl bg-slate-800 border border-white/20 text-white text-sm px-3 py-2 min-w-[180px] disabled:opacity-50"
+            aria-label="Transición instalada en OBS"
+          >
+            {!availableTransitions.length && <option value="">Sin transiciones detectadas</option>}
+            {availableTransitions.map(name => <option key={name} value={name}>{name}</option>)}
+          </select>
+          <button
+            disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
+            onClick={() => onExecuteTransition(activeTransition)}
+            className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >{transitionPending ? 'Transición en curso…' : `Enviar ${obsStatus.currentPreviewScene || 'Preview'} a Program · ${activeTransition || 'transición'}`}</button>
+        </div>
+        {!obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
+        {obsStatus.studioMode && availableTransitions.length === 0 && <p className="text-amber-300 text-xs">No se recibió el catálogo de transiciones de OBS. Comprueba la conexión o vuelve a conectar.</p>}
+        <div role="status" aria-live="polite" className="text-xs text-slate-300 border-t border-white/10 pt-2">{liveFeedback}</div>
+      </section>
+
+      {/* GRAPHICS SECTION: all broadcast controls remain below Preview / Program */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Published graphics — explicit OBS actions, full-width responsive controls */}
+        <div className="p-4 md:p-5 glass-panel rounded-2xl border border-white/10 space-y-3.5">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length} componentes)</h3>
@@ -481,7 +497,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             {report.ambiguous>0&&<span className="text-rose-300"><strong>{report.ambiguous}</strong> ambiguas</span>}
             <span className="text-slate-400">Datos de fuentes OBS; video no verificado</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 pt-1">
             {displayedGraphics.map((c) => {
               const config = customComponents[c.type] || components[c.type as ComponentType];
               if (!config) return null;
