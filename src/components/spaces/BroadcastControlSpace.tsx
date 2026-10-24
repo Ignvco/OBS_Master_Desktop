@@ -285,6 +285,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 pt-1 max-h-[190px] overflow-y-auto pr-1">
+            {obsStatus.scenes.length===0 && <div role="status" className="col-span-full rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs text-slate-300">
+              {obsStatus.connected ? 'OBS está conectado, pero no se han detectado escenas. Revisa la colección activa en OBS.' : 'Conecta OBS para cargar las escenas de realización.'}
+            </div>}
             {obsStatus.scenes.map((scene) => {
               const isProgram = obsStatus.currentProgramScene === scene.name;
               const isPreview = obsStatus.currentPreviewScene === scene.name;
@@ -337,8 +340,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           {/* Monitor Top Bar */}
           <div className="px-4 py-2.5 bg-emerald-950/40 border-b border-emerald-500/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-              <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-300">
+              <span className={`w-2.5 h-2.5 rounded-full ${obsStatus.connected && obsStatus.studioMode?'bg-emerald-400':'bg-slate-500'}`} />
+              <span className={`text-xs font-extrabold uppercase tracking-wider ${obsStatus.connected && obsStatus.studioMode?'text-emerald-300':'text-slate-300'}`}>
                 PREVIEW (PREPARACIÓN)
               </span>
             </div>
@@ -387,8 +390,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">
-                SALIDA OBS
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border font-bold ${obsStatus.connected && program?'bg-rose-500/20 text-rose-300 border-rose-500/40':'bg-white/5 text-slate-400 border-white/10'}`}>
+                {obsStatus.connected && program ? 'PROGRAM OBS' : 'SIN DATOS'}
               </span>
               <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
                 {programSceneLabel}
