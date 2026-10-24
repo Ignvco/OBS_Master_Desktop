@@ -247,3 +247,15 @@
 @media(max-width:1350px){.live-production-status{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:1050px){.live-production-status{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:550px){.live-production-status{grid-template-columns:1fr;}}
+
+/* UX V4.2 Etapa 4 — lower-density toolbars on shorter desktop windows.
+   Editor-only. Browser Source rendering is intentionally unaffected. */
+@media (max-height: 820px) {
+  .stdq-studio-shell .studio-topbar-primary { min-height:46px; padding-top:6px; padding-bottom:6px; }
+  .stdq-studio-shell .studio-topbar-publish { padding-top:5px; padding-bottom:5px; }
+  .stdq-studio-shell .ux-publication-explainer { padding-top:4px; padding-bottom:4px; }
+  .stdq-studio-shell .studio-view-controls { padding-top:4px; padding-bottom:4px; }
+  .stdq-studio-shell .studio-inspector-header { padding-top:8px; padding-bottom:7px; }
+  .stdq-studio-shell .studio-inspector-heading { margin-bottom:6px; }
+  .stdq-studio-shell .studio-inspector-tab { padding-top:6px; padding-bottom:6px; }
+}
