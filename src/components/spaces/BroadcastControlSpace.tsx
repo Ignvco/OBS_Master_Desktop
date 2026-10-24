@@ -176,6 +176,19 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
     return graphicFilter==='all' || (graphicFilter==='visible' && live) || (graphicFilter==='issues' && needsAttention);
   });
 
+  const visiblePublishedGraphics = [
+    ...Object.values(components),
+    ...Object.values(customComponents),
+  ].filter(config => config.visibleInOBS && matchingLiveSources(programSources,config,config.type,linkedSource(config))
+    .some(source => source.type==='browser_source' && source.enabled));
+
+  const previewSceneLabel = obsStatus.connected && obsStatus.studioMode
+    ? obsStatus.currentPreviewScene || 'Sin escena Preview'
+    : 'Preview no disponible';
+  const programSceneLabel = obsStatus.connected
+    ? obsStatus.currentProgramScene || 'Sin escena Program'
+    : 'OBS desconectado';
+
   const handleSceneSelect = (sceneName: string) => {
     if (obsStatus.studioMode) {
       onSetPreviewScene(sceneName);
@@ -188,8 +201,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   return (
     <div className="flex-1 overflow-y-auto px-4 py-5 md:p-6 space-y-5 max-w-[1600px] mx-auto w-full animate-in fade-in duration-200">
       {/* Top Realization Banner */}
-      <div className="flex items-center justify-between px-6 py-3.5 glass-panel rounded-2xl border border-white/10">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-5 py-3 glass-panel rounded-2xl border border-white/10">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <div className="flex items-center gap-2">
             <span className="relative flex h-3 w-3">
               {obsStatus.connected&&<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-40"/>}
@@ -200,7 +213,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             </span>
           </div>
           <span className="text-xs text-slate-500">|</span>
-          <span className="text-xs text-slate-300">
+          <span className="text-xs text-slate-300 truncate max-w-[320px]" title={episode.title}>
             Episodio #{episode.number}: <strong className="text-white">{episode.title}</strong>
           </span>
 
@@ -214,7 +227,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 justify-end">
           <button type="button" aria-pressed={compactDesk} onClick={toggleCompactDesk}
             className="px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10 text-xs font-semibold transition-colors"
             title="Cambiar altura de los monitores esquemáticos sin afectar video ni OBS">
@@ -330,7 +343,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               </span>
             </div>
             <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
-              {obsStatus.currentPreviewScene}
+              {previewSceneLabel}
             </span>
           </div>
 
@@ -340,7 +353,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             <div className={`text-center z-10 ${compactDesk?'space-y-1 px-3 py-2':'space-y-2 p-6'}`}>
               <Tv className={`${compactDesk?'w-5 h-5':'w-10 h-10'} text-emerald-400/40 mx-auto`} />
               <div className="text-base font-bold text-white tracking-tight">
-                {obsStatus.currentPreviewScene}
+                {previewSceneLabel}
               </div>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 {compactDesk?'Representación de estado · no muestra video': 'Escena en preparación. Representación esquemática (no es imagen real). Al confirmar la transición, OBS cambia su señal Program.'}
@@ -355,8 +368,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {/* Preview Quick Action Footer */}
           <div className="p-2.5 bg-black/40 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-xs text-slate-300">{obsStatus.studioMode ? 'Escena indicada en Preview · no está en Program' : 'Modo Estudio desactivado · selección directa a Program'}</span>
-            <span className="text-[11px] text-emerald-300 font-semibold">Transición en el control inferior ↓</span>
+            <span className="text-xs text-slate-300">{obsStatus.connected && obsStatus.studioMode ? 'Escena indicada en Preview · no cambia Program' : 'Preview no disponible · revisa conexión y Modo Estudio'}</span>
+            <span className="text-[11px] text-emerald-300 font-semibold">Transición debajo de Program ↓</span>
           </div>
         </div>
 
@@ -366,8 +379,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="px-4 py-2.5 bg-rose-950/40 border-b border-rose-500/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                {obsStatus.connected && program && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-40" />}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${obsStatus.connected && program?'bg-rose-500':'bg-slate-500'}`} />
               </span>
               <span className="text-xs font-extrabold uppercase tracking-wider text-rose-300">
                 PROGRAM (SALIDA OBS)
@@ -378,7 +391,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                 SALIDA OBS
               </span>
               <span className="text-xs font-mono font-bold text-white bg-black/60 px-2.5 py-0.5 rounded border border-white/10">
-                {obsStatus.currentProgramScene}
+                {programSceneLabel}
               </span>
             </div>
           </div>
@@ -389,7 +402,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             <div className={`text-center z-10 ${compactDesk?'space-y-1 px-3 py-2':'space-y-2 p-6'}`}>
               <Tv className={`${compactDesk?'w-5 h-5':'w-10 h-10'} text-rose-500/60 mx-auto`} />
               <div className="text-base font-bold text-white tracking-tight">
-                {obsStatus.currentProgramScene}
+                {programSceneLabel}
               </div>
               <p className="text-xs text-slate-300 max-w-sm mx-auto">
                 {compactDesk?'Representación de estado · confirmar en OBS': 'Vista esquemática de Program, no video real. Confirma la señal en el monitor de OBS.'}
@@ -397,10 +410,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             </div>
 
             {/* Active Graphic Overlays Indicators on Program */}
-            <div className={`absolute top-2 left-2 flex flex-wrap gap-1 ${compactDesk?'max-w-[48%] max-h-12 overflow-hidden':'max-w-[70%]'}`}>
-              {[...Object.values(components),...Object.values(customComponents)]
-                .filter(c => c.visibleInOBS && matchingLiveSources(programSources, c, c.type, linkedSource(c)).some(source => source.enabled && source.type === 'browser_source'))
-                .map(c => (
+            <div className={`absolute top-2 left-2 flex-wrap gap-1 ${compactDesk?'hidden':'flex max-w-[70%]'}`}>
+              {visiblePublishedGraphics.map(c => (
                   <span key={c.id} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/80 text-rose-300 border border-rose-500/30">
                     ● {c.name}
                   </span>
@@ -415,7 +426,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
 
           {/* Program Footer */}
           <div className="p-2.5 bg-black/40 border-t border-white/5 flex items-center justify-between gap-2 flex-wrap text-xs text-slate-300">
-            <span>Estado de salida OBS · Verificar en monitor real</span>
+            <span>{visiblePublishedGraphics.length} fuente{visiblePublishedGraphics.length===1?'':'s'} gráfica{visiblePublishedGraphics.length===1?'':'s'} habilitada{visiblePublishedGraphics.length===1?'':'s'} · verificar video en OBS</span>
             <span className={`font-semibold ${obsStatus.virtualCamActive?'text-sky-300':'text-slate-400'}`}>
               {obsStatus.virtualCamActive ? 'Cámara virtual OBS activa' : 'Cámara virtual OBS inactiva'}
             </span>
