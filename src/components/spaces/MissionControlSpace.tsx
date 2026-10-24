@@ -308,9 +308,12 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
             <span className="text-xl font-bold text-white tracking-tight">
               {obsStatus.virtualCamActive ? 'Activa en OBS' : 'Inactiva'}
             </span>
-            <button
+            <button type="button"
+              disabled={!obsStatus.connected}
+              aria-pressed={obsStatus.virtualCamActive}
+              title={!obsStatus.connected?'Conecta OBS antes de utilizar la cámara virtual':obsStatus.virtualCamActive?'Detener cámara virtual de OBS':'Activar cámara virtual de OBS'}
               onClick={onToggleVirtualCam}
-              className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-colors ${
+              className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 obsStatus.virtualCamActive
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/30'
                   : 'bg-white/10 text-white hover:bg-white/20'
