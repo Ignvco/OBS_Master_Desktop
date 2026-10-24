@@ -237,10 +237,10 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           </button>
           {/* Studio Mode Toggle */}
           <button
-            disabled={!obsStatus.connected || transitionPending}
+            disabled={!obsStatus.connected || transitionPending || (isProtectedMode && obsStatus.studioMode)}
             onClick={onToggleStudioMode}
             aria-pressed={obsStatus.studioMode}
-            title={obsStatus.studioMode?'Modo Estudio activo: elegir escenas prepara Preview':'Modo Estudio desactivado: elegir escenas puede cambiar Program directamente'}
+            title={isProtectedMode && obsStatus.studioMode?'Modo Protegido impide desactivar Modo Estudio':obsStatus.studioMode?'Modo Estudio activo: elegir escenas prepara Preview':'Modo Estudio desactivado: elegir escenas puede cambiar Program directamente'}
             className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
               obsStatus.studioMode
                 ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm shadow-purple-500/20'
@@ -469,12 +469,13 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             {availableTransitions.map(name => <option key={name} value={name}>{name}</option>)}
           </select>
           <button
-            disabled={!obsStatus.connected || !obsStatus.studioMode || transitionPending || scenePending || !activeTransition}
+            disabled={!obsStatus.connected || !obsStatus.studioMode || !obsStatus.currentPreviewScene || transitionPending || scenePending || !activeTransition}
             onClick={() => onExecuteTransition(activeTransition)}
             className="px-5 py-2.5 bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
           >{transitionPending ? 'Transición en curso…' : `Enviar ${obsStatus.currentPreviewScene || 'Preview'} a Program · ${activeTransition || 'transición'}`}</button>
         </div>
         {!obsStatus.studioMode && <p className="text-amber-300 text-xs">Activa Modo Estudio antes de utilizar transiciones. Si lo desactivas, elegir una escena la envía directamente al aire.</p>}
+        {obsStatus.studioMode && !obsStatus.currentPreviewScene && <p className="text-amber-300 text-xs">No hay una escena preparada en Preview. Selecciona una escena antes de transicionar.</p>}
         {obsStatus.studioMode && availableTransitions.length === 0 && <p className="text-amber-300 text-xs">No se recibió el catálogo de transiciones de OBS. Comprueba la conexión o vuelve a conectar.</p>}
         <div role="status" aria-live="polite" className="text-xs text-slate-300 border-t border-white/10 pt-2">{liveFeedback}</div>
       </section>
