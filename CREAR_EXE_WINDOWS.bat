@@ -32,12 +32,24 @@ if exist package-lock.json (
   call npm install --include=optional --no-audit --no-fund || goto :fail
 )
 if errorlevel 1 goto :fail
-call npm run dist:win || goto :fail
+echo Verificando extraccion temporal de Electron...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0LIMPIAR_STAGING_ELECTRON_UX_V42_WINDOWS.ps1" || goto :fail
+echo Ejecutando electron-builder...
+call npm run dist:win || goto :build_locked
  echo.
  echo OK: revisa desktop-app\release\
  explorer "%~dp0desktop-app\release"
  pause
 exit /b 0
+:build_locked
+echo.
+echo ERROR en electron-builder. Si aparece EPERM renombrando win-unpacked.tmp:
+echo 1. Cierra VS Code, Cursor, Electron y Explorer abierto en release.
+echo 2. Actualiza la rama UX para aplicar la exclusion del watcher.
+echo 3. Vuelve a ejecutar el empaquetado fuera de emision.
+echo Si persiste, revisa Seguridad de Windows y prueba un clon en C:\dev.
+echo NO desactives Defender ni borres AppData.
+goto :fail
 :fail
 echo.
 echo ERROR al construir. No se ha generado un instalador validado.
