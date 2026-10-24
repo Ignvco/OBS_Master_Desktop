@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { matchingLiveSources, listBindableSources, liveBindingReport } from '../../utils/liveSources';
 import { 
   EpisodeData, 
@@ -43,6 +43,7 @@ interface BroadcastControlSpaceProps {
   transitionPending: boolean;
   scenePending: boolean;
   liveFeedback: string;
+  focusGraphicId?: string | null;
   onSetPreviewScene: (sceneName: string) => void;
   onSetProgramScene: (sceneName: string) => void;
   onExecuteTransition: (transitionType?: string) => void;
@@ -70,6 +71,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   transitionPending,
   scenePending,
   liveFeedback,
+  focusGraphicId,
   onSetPreviewScene,
   onSetProgramScene,
   onExecuteTransition,
@@ -92,13 +94,19 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
   const [creatingSource,setCreatingSource]=useState<string|null>(null);
   const [selectedTransition, setSelectedTransition] = useState('');
   const [detailGraphic,setDetailGraphic]=useState<string|null>(null);
+  const [graphicSearch,setGraphicSearch] = useState('');
+  const [graphicFilter,setGraphicFilter] = useState<'all'|'visible'|'issues'>('all');
+  const focusedGraphicRef = useRef<HTMLDivElement>(null);
   const program = obsStatus.scenes.find(scene => scene.name === obsStatus.currentProgramScene);
   const programSources = program?.sources || [];
   const bindableSources = listBindableSources(programSources);
   const availableTransitions = obsStatus.availableTransitions || [];
   const report=liveBindingReport(programSources,[...Object.values(components),...Object.values(customComponents)],
     config=>config.instanceId?(config.obsSourceLinks?.[obsStatus.currentProgramScene]||''):(links[`${obsStatus.currentProgramScene}::${config.type}`]||''));
-  const [showOnlyLinked,setShowOnlyLinked]=useState(false);
+  const focusExists = !focusGraphicId || !!customComponents[focusGraphicId] || Object.prototype.hasOwnProperty.call(components,focusGraphicId);
+  useEffect(() => {
+    if (focusGraphicId && focusExists) focusedGraphicRef.current?.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }, [focusGraphicId,focusExists]);
 
   const activeTransition = availableTransitions.includes(selectedTransition) ? selectedTransition
     : availableTransitions.includes(obsStatus.currentTransitionName || '') ? obsStatus.currentTransitionName!
@@ -211,6 +219,10 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         </div>
       </div>
 
+      {focusGraphicId && !focusExists && <div role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-100 flex flex-wrap items-center justify-between gap-2">
+        <span>La gráfica seleccionada todavía no está publicada para En Vivo. Publica su diseño desde Diseñar antes de vincularla a OBS.</span>
+        <button type="button" className="font-bold underline" onClick={()=>onEditGraphic(focusGraphicId)}>Volver a Diseñar</button>
+      </div>}
       <div className="live-production-status" role="status">
         <div><span>SEÑAL</span><strong>{obsStatus.connected?'Control OBS conectado':'Fuera de conexión'}</strong></div>
         <div><span>ESCENARIO PROGRAM</span><strong>{obsStatus.currentProgramScene||'Sin detectar'}</strong></div>
@@ -364,8 +376,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               <h3 className="text-sm font-bold text-white tracking-tight">Selector de Escenas OBS</h3>
               <span className="text-[11px] font-mono text-slate-400">{obsStatus.scenes.length} ESCENAS</span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {obsStatus.studioMode ? 'Seleccionar prepara en Preview; no cambia Program.' : 'Modo Estudio desactivado: seleccionar envía directamente a Program.'}
+            <p className={`text-xs mt-0.5 ${obsStatus.studioMode?'text-slate-400':'text-amber-200'}`}>
+              {obsStatus.studioMode ? 'Seleccionar prepara en Preview; no cambia Program.' : isProtectedMode ? 'Modo Protegido activo: el selector no cambiará Program hasta desactivar la protección.' : 'Modo Estudio desactivado: seleccionar envía directamente a Program.'}
             </p>
           </div>
 
@@ -377,9 +389,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               return (
                 <button
                   key={scene.id}
-                  disabled={!obsStatus.connected || transitionPending || scenePending}
+                  disabled={!obsStatus.connected || transitionPending || scenePending || (!obsStatus.studioMode && isProtectedMode)}
                   onClick={() => handleSceneSelect(scene.name)}
-                  title={obsStatus.studioMode ? `Preparar «${scene.name}» en Preview sin cambiar Program` : `Enviar «${scene.name}» directamente a Program (Modo Estudio desactivado)`}
+                  title={obsStatus.studioMode ? `Preparar «${scene.name}» en Preview sin cambiar Program` : isProtectedMode ? 'Modo Protegido impide cambiar Program directamente' : `Enviar «${scene.name}» directamente a Program (Modo Estudio desactivado)`}
                   aria-label={obsStatus.studioMode ? `Preparar escena ${scene.name} en Preview` : `Enviar escena ${scene.name} directamente a Program`}
                   className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                     isProgram
@@ -419,7 +431,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length} componentes)</h3>
-              <p className="text-xs text-slate-400">Selecciona «Mostrar» u «Ocultar» para cada gráfica. Su fuente de navegador debe estar vinculada a la escena Program.</p>
+              <p className="text-xs text-slate-400">Activa u oculta cada fuente gráfica en la escena Program de OBS. La tarjeta informativa no emite.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
               <button onClick={() => setEditLinks(!editLinks)} className="border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10" aria-expanded={editLinks}>{editLinks ? 'Cerrar configuración de fuentes' : 'Configurar fuentes OBS'}</button>
@@ -432,18 +444,33 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
             </div>
           </div>
 
+          <div className="flex flex-wrap items-center justify-between gap-2" aria-label="Buscar y filtrar gráficas">
+            <label className="flex-1 min-w-[170px] max-w-sm">
+              <span className="sr-only">Buscar gráfica por nombre</span>
+              <input type="search" value={graphicSearch} onChange={e=>setGraphicSearch(e.target.value)}
+                placeholder="Buscar una gráfica…" aria-label="Buscar una gráfica"
+                className="w-full rounded-lg border border-white/15 bg-black/25 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#FF6B00]" />
+            </label>
+            <div role="group" aria-label="Filtrar gráficas por estado" className="flex items-center gap-1 rounded-lg border border-white/10 p-1 bg-black/20">
+              {([
+                ['all','Todas'],['visible','En Program'],['issues','Por revisar'],
+              ] as const).map(([id,label])=>(
+                <button type="button" key={id} aria-pressed={graphicFilter===id} onClick={()=>setGraphicFilter(id)}
+                  className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${graphicFilter===id?'bg-white/15 text-white':'text-slate-400 hover:text-white hover:bg-white/5'}`}>{label}</button>
+              ))}
+            </div>
+          </div>
           <div className="live-connection-summary" role="status" aria-live="polite">
             <span><strong>{report.verified}</strong> detectadas</span>
             <span><strong>{report.live}</strong> fuentes visibles</span>
             <span className={report.missing?'text-amber-300':''}><strong>{report.missing}</strong> sin vincular</span>
             {report.ambiguous>0&&<span className="text-rose-300"><strong>{report.ambiguous}</strong> ambiguas</span>}
-            <label><input type="checkbox" checked={showOnlyLinked} onChange={e=>setShowOnlyLinked(e.target.checked)}/> Solo detectadas</label>
+            <span className="text-slate-400">Datos de fuentes OBS; video no verificado</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
             {[...componentLabels, ...Object.values(customComponents).map(config=>({type:config.instanceId!,label:config.name,icon:'✦'}))].map((c) => {
               const config = customComponents[c.type] || components[c.type as ComponentType];
-              if (!config) return null;
-              if(showOnlyLinked && matchingLiveSources(programSources,config,config.type,linkedSource(config)).length!==1)return null;
+              if (!config || !c.label.toLocaleLowerCase('es').includes(graphicSearch.trim().toLocaleLowerCase('es'))) return null;
               const linked = linkedSource(config);
               // Custom graphics MUST be explicitly linked to the browser source with their own URL.
               const matches = matchingLiveSources(programSources, config, config.type, linked);
@@ -451,6 +478,9 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
               const pending = pendingComponents.includes(c.type);
               const unavailable = !obsStatus.connected || !program || !source;
               const isLive = !!config.visibleInOBS && !!source?.enabled;
+              const needsAttention = !obsStatus.connected || !program || !source || !!(config.visibleInOBS && !source.enabled);
+              if (graphicFilter==='visible' && !isLive) return null;
+              if (graphicFilter==='issues' && !needsAttention) return null;
               const status = !obsStatus.connected ? 'OBS DESCONECTADO'
                 : !program ? 'SIN ESCENA PROGRAM'
                 : !source ? matches.length > 1 ? 'VÍNCULO AMBIGUO' : 'FUENTE NO VINCULADA'
@@ -459,13 +489,15 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                 : config.visibleInOBS && !source.enabled ? 'FUENTE OBS DESACTIVADA'
                 : 'OCULTO';
               return (
-                <div key={c.type} className="min-w-0 rounded-xl border border-white/10 bg-white/[0.02] p-2 flex flex-col gap-2">
+                <div key={c.type} ref={focusGraphicId===c.type?focusedGraphicRef:undefined}
+                  className={`min-w-0 rounded-xl border bg-white/[0.02] p-2 flex flex-col gap-2 ${focusGraphicId===c.type?'border-orange-400/70 ring-1 ring-orange-400/40':'border-white/10'}`}>
                   <div className="flex flex-col gap-2 min-h-[86px] px-2 pt-2 pb-1" role="group" aria-label={`Estado de ${c.label}`}>
                     <div className="flex justify-between items-center gap-2">
                       <span className="text-base" aria-hidden="true">{c.icon}</span>
                       <span className={`w-2.5 h-2.5 rounded-full ${isLive?'bg-rose-500':unavailable?'bg-amber-400':'bg-slate-600'}`} aria-hidden="true"/>
                     </div>
                     <strong className="text-xs font-bold text-white leading-tight">{c.label}</strong>
+                    {focusGraphicId===c.type && <span className="text-[10px] text-orange-300 font-semibold">Seleccionada desde Diseñar</span>}
                     <span role="status" className={`text-[10px] leading-snug ${isLive?'text-rose-300':unavailable?'text-amber-200':'text-slate-400'}`}>{status}</span>
                   </div>
                   <button type="button"
