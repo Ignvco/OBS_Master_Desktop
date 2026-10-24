@@ -144,10 +144,13 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* OBS Virtual Camera Toggle */}
-        <button
+        <button type="button"
           onClick={onToggleVirtualCam}
-          title={obsStatus.virtualCamActive ? "Cámara virtual activa en OBS; comprobar recepción en StreamYard" : "Activar cámara virtual de OBS (no inicia StreamYard)"}
-          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 ${
+          disabled={!obsStatus.connected}
+          aria-pressed={obsStatus.virtualCamActive}
+          aria-label={obsStatus.virtualCamActive ? 'Detener cámara virtual OBS' : 'Activar cámara virtual OBS'}
+          title={!obsStatus.connected ? "Conecta OBS antes de controlar su cámara virtual" : obsStatus.virtualCamActive ? "Cámara virtual activa en OBS; comprobar recepción en StreamYard" : "Activar cámara virtual de OBS (no inicia StreamYard)"}
+          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 ${
             obsStatus.virtualCamActive
               ? 'bg-sky-500/15 text-sky-300 border-sky-500/40 shadow-sm shadow-sky-500/20'
               : 'bg-black/30 text-slate-400 border-white/10 hover:text-slate-200 hover:border-white/20'
@@ -161,8 +164,9 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Safe Mode / Protect On-Air Actions */}
-        <button
+        <button type="button"
           onClick={onToggleProtectedMode}
+          aria-pressed={isProtectedMode}
           title={isProtectedMode ? "Modo Protegido Activo" : "Modo Edición Libre"}
           className={`p-2 rounded-xl border transition-all shrink-0 ${
             isProtectedMode
