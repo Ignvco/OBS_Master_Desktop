@@ -77,7 +77,7 @@ interface ContentStudioSpaceProps {
   publicationBusy: boolean;
   onPublishGraphic: (id: string) => Promise<void>;
   focusGraphicId?:string|null;
-  onGoLive: () => void;
+  onGoLive: (graphicId:string) => void;
   onManageRevision: (id:string,action:'save'|'restore-draft'|'rename'|'remove'|'pin',version?:number,label?:string)=>Promise<void>;
   saveStatus: 'saved' | 'saving' | 'error';
   onRetrySave: () => void;
@@ -1007,7 +1007,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
 
             </>}
             {/* Editorial handoff: live visibility is controlled in the realization workspace. */}
-            <button type="button" onClick={onGoLive}
+            <button type="button" onClick={()=>onGoLive(selectionKey)}
               title="Abrir la mesa En Vivo para mostrar u ocultar gráficas en OBS"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10">
               <Radio className="w-3.5 h-3.5" /> Gestionar en En Vivo →
@@ -1674,7 +1674,7 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
           {/* TAB 5: EMISIÓN A OBS */}
           {activeInspectorTab === 'broadcast' && (
             <div className="space-y-4">
-              <button type="button" onClick={onGoLive} className="w-full rounded-xl border border-[#FF6B00]/40 bg-[#FF6B00]/10 px-3 py-2.5 text-xs font-bold text-orange-200 hover:bg-[#FF6B00]/20">
+              <button type="button" onClick={()=>onGoLive(selectionKey)} className="w-full rounded-xl border border-[#FF6B00]/40 bg-[#FF6B00]/10 px-3 py-2.5 text-xs font-bold text-orange-200 hover:bg-[#FF6B00]/20">
                 Abrir En Vivo para controlar la gráfica →
               </button>
               <p className="text-xs text-slate-400">Editar o publicar un diseño no activa automáticamente su fuente OBS.</p>
