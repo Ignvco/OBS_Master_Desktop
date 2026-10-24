@@ -215,6 +215,7 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
         <div><span>SEÑAL</span><strong>{obsStatus.connected?'Control OBS conectado':'Fuera de conexión'}</strong></div>
         <div><span>ESCENARIO PROGRAM</span><strong>{obsStatus.currentProgramScene||'Sin detectar'}</strong></div>
         <div><span>MODO ESTUDIO</span><strong>{obsStatus.studioMode?'Preview protegido':'Cambio directo de escenas'}</strong></div>
+        <div><span>PROTECCIÓN</span><strong>{isProtectedMode?'Acciones directas protegidas':'Modo protegido desactivado'}</strong></div>
         <div><span>OPERACIONES</span><strong>{pendingComponents.length?`${pendingComponents.length} en curso`:'Sin operaciones pendientes'}</strong></div>
       </div>
       {/* DUAL MONITORS: PREVIEW & PROGRAM */}
@@ -378,6 +379,8 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                   key={scene.id}
                   disabled={!obsStatus.connected || transitionPending || scenePending}
                   onClick={() => handleSceneSelect(scene.name)}
+                  title={obsStatus.studioMode ? `Preparar «${scene.name}» en Preview sin cambiar Program` : `Enviar «${scene.name}» directamente a Program (Modo Estudio desactivado)`}
+                  aria-label={obsStatus.studioMode ? `Preparar escena ${scene.name} en Preview` : `Enviar escena ${scene.name} directamente a Program`}
                   className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
                     isProgram
                       ? 'bg-rose-500/20 border-rose-500 text-white shadow-md'
@@ -416,10 +419,10 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight">Gráficas del programa ({componentLabels.length + Object.keys(customComponents).length} componentes)</h3>
-              <p className="text-xs text-slate-400">Detección automática por URL confirmada de OBS. Los vínculos manuales se verifican antes de activar una gráfica.</p>
+              <p className="text-xs text-slate-400">Selecciona «Mostrar» u «Ocultar» para cada gráfica. Su fuente de navegador debe estar vinculada a la escena Program.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-              <button onClick={() => setEditLinks(!editLinks)} className="border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10" aria-expanded={editLinks}>{editLinks ? 'Cerrar vínculos' : 'Vincular fuentes OBS'}</button>
+              <button onClick={() => setEditLinks(!editLinks)} className="border border-white/20 rounded-lg px-2 py-1 hover:bg-white/10" aria-expanded={editLinks}>{editLinks ? 'Cerrar configuración de fuentes' : 'Configurar fuentes OBS'}</button>
               <span className="flex items-center gap-1 text-rose-400 font-bold">
                 <span className="w-2 h-2 rounded-full bg-rose-500" /> AL AIRE
               </span>
@@ -456,21 +459,22 @@ export const BroadcastControlSpace: React.FC<BroadcastControlSpaceProps> = ({
                 : config.visibleInOBS && !source.enabled ? 'FUENTE OBS DESACTIVADA'
                 : 'OCULTO';
               return (
-                <div key={c.type} className="min-w-0">
-                  <button
-                    type="button"
+                <div key={c.type} className="min-w-0 rounded-xl border border-white/10 bg-white/[0.02] p-2 flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 min-h-[86px] px-2 pt-2 pb-1" role="group" aria-label={`Estado de ${c.label}`}>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-base" aria-hidden="true">{c.icon}</span>
+                      <span className={`w-2.5 h-2.5 rounded-full ${isLive?'bg-rose-500':unavailable?'bg-amber-400':'bg-slate-600'}`} aria-hidden="true"/>
+                    </div>
+                    <strong className="text-xs font-bold text-white leading-tight">{c.label}</strong>
+                    <span role="status" className={`text-[10px] leading-snug ${isLive?'text-rose-300':unavailable?'text-amber-200':'text-slate-400'}`}>{status}</span>
+                  </div>
+                  <button type="button"
                     disabled={unavailable || pending || transitionPending || scenePending}
                     onClick={() => onToggleComponentVisibility(c.type, linked || source?.name)}
-                    title={source ? `${source.name} · ${obsStatus.currentProgramScene}` : 'Vincula esta gráfica con una fuente de navegador de la escena Program'}
-                    className={`w-full flex flex-col justify-between min-h-[100px] p-3 rounded-xl border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                      isLive ? 'bg-rose-500/15 border-rose-500/50 text-white shadow-lg shadow-rose-500/15'
-                      : 'bg-white/[0.02] border-white/5 hover:border-white/15 text-slate-300'
-                    }`}
-                  >
-                    <span className="flex justify-between items-center w-full"><span className="text-base" aria-hidden="true">{c.icon}</span>
-                    <span className={`w-2.5 h-2.5 rounded-full ${isLive ? 'bg-rose-500' : unavailable ? 'bg-amber-400' : 'bg-slate-700'}`} /></span>
-                    <span className="text-xs font-bold text-white leading-tight mt-2">{c.label}</span>
-                    <span className="text-[10px] text-slate-400 mt-1">{status}</span>
+                    aria-label={`${pending?'Aplicando':isLive?'Ocultar de Program':'Mostrar en Program'}: ${c.label}`}
+                    title={source ? `Fuente OBS: ${source.name} · Escena Program: ${obsStatus.currentProgramScene}` : 'No hay una fuente de navegador válida para esta gráfica en Program'}
+                    className={`w-full min-h-9 rounded-lg px-2 py-2 text-xs font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isLive?'bg-rose-500/15 border-rose-500/40 text-rose-100 hover:bg-rose-500/25':'bg-[#FF6B00] border-[#FF6B00] text-[#1A0A00] hover:bg-[#FF8B45]'}`}>
+                    {pending?'Aplicando…':isLive?'Ocultar de Program':'Mostrar en Program'}
                   </button>
                   <div className="live-graphic-actions">
                     <button type="button" onClick={()=>onEditGraphic(c.type)} title="Abrir esta gráfica en Content Studio">Editar</button>
