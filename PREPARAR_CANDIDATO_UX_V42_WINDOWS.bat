@@ -43,6 +43,12 @@ if errorlevel 1 (
 )
 echo.
 echo [2/3] Compilacion y empaquetado local Electron...
+set "UX_BUILD_STARTED="
+for /f "delims=" %%T in ('powershell -NoProfile -Command "[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()"') do set "UX_BUILD_STARTED=%%T"
+if not defined UX_BUILD_STARTED (
+  echo ERROR: no se pudo capturar el comienzo de la compilacion.
+  exit /b 1
+)
 echo Se generan Setup y Portable con la version del package.json.
 echo IMPORTANTE: CREAR_EXE_WINDOWS.bat puede pausar la consola
 echo y abrir la carpeta release al terminar.
@@ -55,7 +61,7 @@ if errorlevel 1 (
 
 echo.
 echo [3/3] Comprobando artefactos y generando manifiesto SHA-256...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0VERIFICAR_CANDIDATO_UX_V42_WINDOWS.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0VERIFICAR_CANDIDATO_UX_V42_WINDOWS.ps1" -NotBeforeUnix %UX_BUILD_STARTED%
 if errorlevel 1 (
   echo ERROR: falta algun artefacto o la comprobacion fallo.
   exit /b 1
