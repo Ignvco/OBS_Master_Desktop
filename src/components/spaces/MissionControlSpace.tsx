@@ -79,6 +79,16 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
   onShowToast,
 }) => {
   const [subTab, setSubTab] = useState<'overview' | 'performance' | 'settings' | 'recovery'>('overview');
+  const [showGuide, setShowGuide] = useState(() => {
+    try { return localStorage.getItem('stdq-v42-ux-guide-dismissed-v1') !== '1'; }
+    catch { return true; }
+  });
+  const toggleGuide = () => {
+    setShowGuide(current => {
+      try { localStorage.setItem('stdq-v42-ux-guide-dismissed-v1', current ? '1' : '0'); } catch {}
+      return !current;
+    });
+  };
   // Compute health score
   const activeComponentsCount = [...Object.values(components),...Object.values(customComponents)].filter(c => c.visibleInOBS).length;
   // OBS WebSocket and its virtual camera are not proof of a complete preflight or an external StreamYard broadcast.
@@ -235,9 +245,12 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
       <section className="rounded-2xl border border-white/10 bg-white/[0.025] px-5 py-4 space-y-3" aria-label="Cómo empezar con OBS MASTER">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-bold text-white">Tu recorrido de producción</h2>
-          <span className="text-xs text-slate-400">Diseña → prepara → opera. Nada de esto inicia StreamYard automáticamente.</span>
+          <button type="button" onClick={toggleGuide} aria-expanded={showGuide}
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-orange-200 hover:bg-white/10">
+            {showGuide?'Ocultar orientación':'Mostrar orientación'}
+          </button>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
+        {showGuide && <div className="grid gap-2 sm:grid-cols-3">
           <button type="button" onClick={()=>onNavigate('content-studio')} className="text-left rounded-xl p-3 border border-white/10 hover:border-[#FF6B00]/50 hover:bg-[#FF6B00]/5 transition-colors">
             <span className="text-[10px] font-semibold text-[#FF8A3C] tracking-wider">01 · CREAR</span>
             <span className="block mt-1 text-sm font-bold text-white">Diseñar una gráfica →</span>
@@ -253,8 +266,8 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
             <span className="block mt-1 text-sm font-bold text-white">Abrir En Vivo →</span>
             <span className="block mt-1 text-xs text-slate-400">Controlar escenas y gráficas en OBS. Puede afectar Program.</span>
           </button>
-        </div>
-        <p className="text-[11px] text-slate-400">OBS conectado y cámara activa no confirman audio, imagen ni emisión pública. Comprueba esos puntos en OBS y StreamYard antes de comenzar.</p>
+        </div>}
+        {showGuide && <p className="text-[11px] text-slate-400">OBS conectado y cámara activa no confirman audio, imagen ni emisión pública. Comprueba esos puntos en OBS y StreamYard antes de comenzar.</p>}
       </section>
 
       {/* Primary Telemetry Grid (4 Essential Checks) */}
@@ -266,7 +279,7 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
             <Radio className="w-4 h-4 text-[#FF6B00]" />
           </div>
           <div className="text-xl font-bold text-white tracking-tight">
-            {obsStatus.connected ? 'Conectado Live' : obsStatus.connecting ? 'Conectando...' : 'Desconectado'}
+            {obsStatus.connected ? 'Conectado' : obsStatus.connecting ? 'Conectando...' : 'Desconectado'}
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between pt-1">
             <span>Escena al Aire:</span>
@@ -294,7 +307,7 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xl font-bold text-white tracking-tight">
-              {obsStatus.virtualCamActive ? 'Emisión Activa' : 'Inactiva'}
+              {obsStatus.virtualCamActive ? 'Activa en OBS' : 'Inactiva'}
             </span>
             <button
               onClick={onToggleVirtualCam}
@@ -308,7 +321,7 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
             </button>
           </div>
           <div className="text-xs text-slate-400 pt-1">
-            Alimenta StreamYard en navegador Windows
+            Comprueba en StreamYard que OBS Virtual Camera entrega imagen; esto no inicia una transmisión.
           </div>
         </div>
 
@@ -329,12 +342,12 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
         {/* Card 4: Active Overlays Count */}
         <div className="p-5 rounded-2xl glass-panel border border-white/5 space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span className="font-semibold uppercase tracking-wider">Gráficas al Aire</span>
+            <span className="font-semibold uppercase tracking-wider">Gráficas marcadas como visibles</span>
             <Layers className="w-4 h-4 text-amber-400" />
           </div>
           <div className="flex items-center justify-between">
             <div className="text-xl font-bold text-white tracking-tight">
-              {activeComponentsCount} <span className="text-xs font-normal text-slate-400">de 13 activos</span>
+              {activeComponentsCount} <span className="text-xs font-normal text-slate-400">de {Object.values(components).length + Object.values(customComponents).length} gráficas</span>
             </div>
             {activeComponentsCount > 0 && (
               <button
@@ -347,7 +360,7 @@ export const MissionControlSpace: React.FC<MissionControlSpaceProps> = ({
             )}
           </div>
           <div className="text-xs text-slate-400 pt-1">
-            Browser Sources en OBS Studio
+            Estado guardado en OBS MASTER · confirma la imagen real en OBS Studio
           </div>
         </div>
       </section>
