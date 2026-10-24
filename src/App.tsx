@@ -46,6 +46,12 @@ export default function App() {
   const [activeSpace, setActiveSpace] = useState<NavigationSpace>('inicio');
   const [studioFocusGraphic,setStudioFocusGraphic]=useState<string|null>(null);
   const [liveFocusGraphic,setLiveFocusGraphic]=useState<string|null>(null);
+  // Only the explicit Diseñar -> En Vivo handoff retains a selected graphic.
+  // Opening En Vivo through general navigation must start with a neutral desk.
+  const navigateWorkspace = (space:NavigationSpace) => {
+    if (space === 'en-vivo') setLiveFocusGraphic(null);
+    setActiveSpace(space);
+  };
   const [episode, setEpisode] = useState<EpisodeData>(() => StorageService.loadEpisode());
   const [components, setComponents] = useState<Record<ComponentType, EditorialComponentConfig>>(() =>
     StorageService.loadDraftComponents()
@@ -615,7 +621,7 @@ export default function App() {
       {/* Apple HIG Header Navigation */}
       <Header
         activeSpace={activeSpace}
-        onNavigate={setActiveSpace}
+        onNavigate={navigateWorkspace}
         obsStatus={obsStatus}
         isProtectedMode={isProtectedMode}
         onToggleProtectedMode={() => setIsProtectedMode(!isProtectedMode)}
@@ -634,7 +640,7 @@ export default function App() {
             customComponents={publishedCustomComponents}
             countdown={countdown}
             components={publishedComponents}
-            onNavigate={setActiveSpace}
+            onNavigate={navigateWorkspace}
             onStartCountdown={handleStartCountdown}
             onPauseCountdown={handlePauseCountdown}
             onResetCountdown={handleResetCountdown}
@@ -694,6 +700,7 @@ export default function App() {
             onReplayGraphic={handleReplayGraphic}
             onEditGraphic={id=>{setStudioFocusGraphic(id);setActiveSpace('content-studio');}}
             focusGraphicId={liveFocusGraphic}
+            onClearGraphicFocus={() => setLiveFocusGraphic(null)}
             onHideAllComponents={handleHideAllComponents}
             onStartCountdown={handleStartCountdown}
             onPauseCountdown={handlePauseCountdown}
