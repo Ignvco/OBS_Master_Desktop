@@ -39,30 +39,30 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
   };
 
   const borders = {
-    success: 'border-emerald-500/30',
-    warning: 'border-amber-500/30',
-    error: 'border-rose-500/30',
-    info: 'border-sky-500/30',
+    success: 'border-emerald-500/60 shadow-[inset_3px_0_0_#22c55e]',
+    warning: 'border-amber-500/60 shadow-[inset_3px_0_0_#f59e0b]',
+    error: 'border-red-500/70 shadow-[inset_3px_0_0_#ef4444]',
+    info: 'border-sky-500/60 shadow-[inset_3px_0_0_#38bdf8]',
   };
 
   return (
     <div
       role="alert"
-      className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl glass-panel-elevated border ${borders[toast.type]} shadow-2xl transition-all duration-200 animate-in fade-in slide-in-from-bottom-2`}
+      className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-md bg-[#11141a] border ${borders[toast.type]} shadow-[0_14px_34px_rgba(0,0,0,0.85)] transition-all duration-150 animate-in fade-in slide-in-from-bottom-2`}
     >
       {icons[toast.type]}
       <div className="flex-1 min-w-0 pr-2">
-        <h4 className="text-sm font-semibold text-white tracking-tight">{toast.title}</h4>
+        <h4 className="text-xs font-extrabold uppercase tracking-wider text-white font-mono">{toast.title}</h4>
         {toast.message && (
-          <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{toast.message}</p>
+          <p className="text-xs text-slate-300 mt-1 leading-relaxed">{toast.message}</p>
         )}
       </div>
       <button
         onClick={() => onDismiss(toast.id)}
         aria-label="Cerrar notificación"
-        className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+        className="text-slate-400 hover:text-white p-1 rounded bg-[#07090c] border border-[#262c38] hover:border-slate-500 transition-colors"
       >
-        <X className="w-4 h-4" />
+        <X className="w-3.5 h-3.5" />
       </button>
     </div>
   );

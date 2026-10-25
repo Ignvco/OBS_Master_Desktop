@@ -797,30 +797,21 @@ export const OBSSettingsTab: React.FC<OBSSettingsTabProps> = ({
             </div>
           </div>
 
-          {/* Download Package Card for Local Machine */}
-          <div className="rounded-3xl p-6 glass-panel border border-white/10 bg-gradient-to-br from-[#121622] via-[#0E1119] to-[#0A0C10] shadow-xl space-y-3.5">
+          {/* Desktop Runtime Verification Card */}
+          <div className="atem-module p-5 space-y-2.5">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Download className="w-4 h-4 text-sky-400" />
-                <span>Instalar en Máquina Local</span>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#00C853]" />
+                <span>Runtime Local V4.2</span>
               </h2>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                v3.0.1 ZIP
+              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-[#00C853]/15 text-[#69F0AE] border border-[#00C853]/40">
+                OBS WS v5
               </span>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Descarga el paquete completo listo para descomprimir y ejecutar en tu PC. Incluye dependencias resueltas, <code>.npmrc</code> sin conflictos <code>ERESOLVE</code> y conexión real a OBS.
+            <p className="text-[11px] text-[#8E95A3] leading-relaxed">
+              Estación de control local conectada mediante protocolo nativo OBS WebSocket v5 (SHA-256 Challenge/Auth) y servidor HTTP de gráficas Browser Source en loopback.
             </p>
-
-            <a
-              href="/OBS-Master-v3.0.1.zip"
-              download="OBS-Master-v3.0.1.zip"
-              className="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-300 hover:to-blue-400 text-slate-950 flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-500/20 active:scale-95"
-            >
-              <Download className="w-4 h-4 text-slate-950" />
-              <span>Descargar OBS-Master-v3.0.1.zip</span>
-            </a>
           </div>
         </div>
       </div>

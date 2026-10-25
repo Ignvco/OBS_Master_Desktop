@@ -26,11 +26,11 @@ interface Props {
   onShowToast: (type: 'success'|'warning'|'error'|'info', title: string, message?: string) => void;
 }
 
-const panel = 'rounded-2xl border border-white/10 bg-white/[0.035]';
-const field = 'w-full min-w-0 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-[#FF6B00]/70';
-const subtleButton = 'inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.055] px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/[0.11] disabled:opacity-40';
-const primaryButton = 'inline-flex items-center justify-center gap-2 rounded-xl bg-[#FF6B00] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#FF812A] disabled:opacity-40';
-const textButton = 'inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white';
+const panel = 'atem-module';
+const field = 'w-full min-w-0 rounded border border-[#2C313C] bg-[#0B0D10] px-3 py-2 text-xs text-white outline-none focus:border-[#E58A1F]';
+const subtleButton = 'atem-btn inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-[#E6E9EF] disabled:opacity-40';
+const primaryButton = 'atem-btn atem-btn-amber inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-[11px] font-bold text-[#FFC078] disabled:opacity-40';
+const textButton = 'inline-flex items-center gap-1.5 text-[11px] font-bold text-[#8E95A3] hover:text-white';
 const formatSize = (bytes?: number) => bytes === undefined ? '—' : bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
 const dateLabel = (date: string) => { const n = new Date(date); return Number.isNaN(n.valueOf()) ? date : n.toLocaleDateString('es-CL'); };
 
@@ -245,110 +245,167 @@ export const AssetLibrarySpace: React.FC<Props> = ({
   const missingAssets = library.assets.filter(a => a.isMissing).length;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#090A0E] px-5 py-6 lg:px-8 lg:py-7">
-      <div className="mx-auto w-full max-w-[1560px] space-y-6 pb-12 animate-in fade-in duration-200">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#FF6B00]">Espacio E · Gestión de producción</div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white lg:text-3xl">Biblioteca</h1>
-            <p className="mt-1 text-xs text-slate-400">Capítulos recuperables, recursos reales, seguridad y preferencias de trabajo.</p>
+    <div className="flex-1 overflow-y-auto bg-[#0D0F13] px-4 py-4 lg:px-6 lg:py-5">
+      <div className="mx-auto w-full max-w-[1680px] space-y-4 pb-10">
+        {/* ATEM Media Pool Top Header */}
+        <div className="atem-module overflow-hidden">
+          <div className="atem-module-header">
+            <span className="atem-label text-[#E6E9EF]">MEDIA POOL &amp; ARCHIVE · ESPACIO 5 (BIBLIOTECA)</span>
+            <span className="font-mono text-[10px] font-bold text-[#8E95A3]">.stdq-runtime/media</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className={subtleButton} onClick={async () => { setIsLoading(true); try { setLibrary(await LibraryService.read()); onShowToast('info', 'Biblioteca actualizada'); } catch (e:any) { onShowToast('error','No se pudo actualizar',e.message); } finally { setIsLoading(false); } }}><RefreshCw size={14}/> Actualizar</button>
-            <button className={subtleButton} onClick={() => setShowSettings(true)}><Settings2 size={14}/> Preferencias</button>
+          <div className="p-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-[#0A0B0E] border border-[#2C313C] font-mono text-[10px] font-bold text-[#00A8E8]">
+                  EP ACTIVO #{episode.number}
+                </span>
+                <h1 className="text-base font-black tracking-tight text-white">Biblioteca &amp; Media Pool</h1>
+              </div>
+              <p className="mt-1 text-[11px] text-[#8E95A3]">
+                Capítulos recuperables, slots multimedia numerados, puntos de restauración y preferencias de catálogo.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button className={subtleButton} onClick={async () => { setIsLoading(true); try { setLibrary(await LibraryService.read()); onShowToast('info', 'Biblioteca actualizada'); } catch (e:any) { onShowToast('error','No se pudo actualizar',e.message); } finally { setIsLoading(false); } }}><RefreshCw size={13}/> Actualizar</button>
+              <button className={subtleButton} onClick={() => setShowSettings(true)}><Settings2 size={13}/> Preferencias</button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-px bg-[#2C313C] border-t border-[#2C313C] lg:grid-cols-4">
+            {[
+              [<Clapperboard size={15}/>, String(library.episodes.length).padStart(2, '0'), 'EPISODIOS ARCHIVADOS', 'text-[#00A8E8]'],
+              [<HardDrive size={15}/>, String(library.assets.length).padStart(2, '0'), 'SLOTS EN MEDIA POOL', 'text-[#00C853]'],
+              [<CircleAlert size={15}/>, String(missingAssets).padStart(2, '0'), 'ARCHIVOS FALTANTES', missingAssets > 0 ? 'text-[#E58A1F]' : 'text-[#58606E]'],
+              [<ShieldCheck size={15}/>, String(backups.length).padStart(2, '0'), 'SNAPSHOTS LOCALES', 'text-[#E58A1F]'],
+            ].map(([icon, value, label, colorClass], i) => (
+              <div key={i} className="bg-[#13161B] flex items-center gap-3 px-3.5 py-2.5">
+                <div className={`rounded border border-[#2C313C] bg-[#0B0D10] p-2 ${colorClass}`}>{icon}</div>
+                <div>
+                  <div className={`font-mono text-base font-black tabular-nums ${colorClass}`}>{value}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-[#8E95A3]">{label}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[
-            [<Clapperboard size={18}/>, String(library.episodes.length), 'Episodios archivados'],
-            [<HardDrive size={18}/>, String(library.assets.length), 'Recursos multimedia'],
-            [<CircleAlert size={18}/>, String(missingAssets), 'Recursos no encontrados'],
-            [<ShieldCheck size={18}/>, String(backups.length), 'Puntos de restauración'],
-          ].map(([icon, value, label], i) => <div key={i} className={`${panel} flex items-center gap-3 p-3.5`}><div className="rounded-xl bg-[#FF6B00]/10 p-2 text-[#FF8534]">{icon}</div><div><div className="text-xl font-extrabold text-white">{value}</div><div className="text-[10px] text-slate-400">{label}</div></div></div>)}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
-          <div className="flex rounded-xl border border-white/10 bg-white/[0.035] p-1">
-            {([['episodes','Episodios'],['assets','Recursos'],['backups','Respaldos']] as const).map(([key, label]) =>
-              <button key={key} onClick={() => void selectTab(key)} className={`rounded-lg px-4 py-2 text-xs font-bold ${tab === key ? 'bg-white/15 text-white' : 'text-slate-400 hover:text-white'}`}>{label}</button>
+        {/* Sub-bank Navigation & Search */}
+        <div className="flex flex-wrap items-center justify-between gap-3 atem-well p-2">
+          <div className="flex items-center gap-1">
+            {([['episodes','EPISODIOS ARCHIVADOS'],['assets','MEDIA POOL (RECURSOS)'],['backups','SNAPSHOTS & RESPALDO']] as const).map(([key, label]) =>
+              <button key={key} onClick={() => void selectTab(key)} className={`atem-btn px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider ${tab === key ? 'atem-btn-amber text-[#FFC078]' : 'text-[#8E95A3] hover:text-white'}`}>{label}</button>
             )}
           </div>
-          {tab !== 'backups' && <div className="flex w-full items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 sm:w-72"><Search size={14} className="text-slate-400"/><input aria-label="Buscar en Biblioteca" placeholder="Buscar por nombre, etiqueta o número…" className="w-full bg-transparent py-2.5 text-xs text-white outline-none placeholder:text-slate-500" value={search} onChange={e => setSearch(e.target.value)}/>{search && <button onClick={()=>setSearch('')} title="Limpiar búsqueda"><X size={13}/></button>}</div>}
+          {tab !== 'backups' && <div className="flex w-full items-center gap-2 rounded border border-[#2C313C] bg-[#0B0D10] px-2.5 sm:w-80"><Search size={13} className="text-[#8E95A3]"/><input aria-label="Buscar en Biblioteca" placeholder="Buscar por nombre, etiqueta o número…" className="w-full bg-transparent py-1.5 text-xs text-white outline-none placeholder:text-[#58606E]" value={search} onChange={e => setSearch(e.target.value)}/>{search && <button onClick={()=>setSearch('')} title="Limpiar búsqueda" className="text-[#8E95A3] hover:text-white"><X size={13}/></button>}</div>}
         </div>
 
-        {isLoading && <div className={`${panel} flex items-center gap-3 p-6 text-sm text-slate-300`}><LoaderCircle className="animate-spin" size={17}/> Cargando biblioteca local…</div>}
+        {isLoading && <div className={`${panel} flex items-center gap-3 p-5 text-xs font-mono text-[#8E95A3]`}><LoaderCircle className="animate-spin text-[#E58A1F]" size={16}/> CARGANDO CATÁLOGO LOCAL…</div>}
 
-        {!isLoading && tab === 'episodes' && <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(330px,0.85fr)]">
+        {!isLoading && tab === 'episodes' && <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.85fr)]">
           <section className={`${panel} overflow-hidden`}>
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 p-4"><div><h2 className="text-sm font-bold text-white">Catálogo de episodios</h2><p className="mt-0.5 text-[11px] text-slate-400">Selecciona un episodio para editar o activarlo.</p></div><span className="text-[10px] text-slate-500">{filteredEpisodes.length} resultados</span></div>
-            <div className="max-h-[620px] divide-y divide-white/5 overflow-y-auto">
-              {filteredEpisodes.length === 0 && <div className="p-10 text-center text-xs text-slate-400">Aún no hay capítulos que coincidan con tu búsqueda.</div>}
-              {filteredEpisodes.map(ep => <button key={ep.id} onClick={() => setSelectedId(ep.id)} className={`flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-white/[0.055] ${selectedId === ep.id ? 'bg-[#FF6B00]/[0.08]' : ''}`}>
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-black ${ep.id === episode.id ? 'bg-[#FF6B00] text-white' : 'bg-white/10 text-slate-300'}`}>{ep.number}</div>
-                <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-white">{ep.title}</div><div className="truncate text-[11px] text-slate-400">{ep.subtitle || 'Sin subtítulo'} · T{ep.season} · {dateLabel(ep.date)}</div></div>
-                {ep.id === episode.id && <span className="rounded-md bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400">ACTIVO</span>}
-                <ChevronRight size={15} className="text-slate-500"/>
+            <div className="atem-module-header">
+              <span className="atem-label text-[#E6E9EF]">CATÁLOGO DE EPISODIOS</span>
+              <span className="font-mono text-[10px] font-bold text-[#8E95A3]">{filteredEpisodes.length} REGISTROS</span>
+            </div>
+            <div className="max-h-[620px] divide-y divide-[#252932] overflow-y-auto">
+              {filteredEpisodes.length === 0 && <div className="p-8 text-center text-xs text-[#8E95A3]">Aún no hay capítulos que coincidan con tu búsqueda.</div>}
+              {filteredEpisodes.map(ep => <button key={ep.id} onClick={() => setSelectedId(ep.id)} className={`flex w-full items-center gap-3 p-3.5 text-left transition-colors hover:bg-[#1B1F27] ${selectedId === ep.id ? 'bg-[#E58A1F]/10 border-l-2 border-l-[#E58A1F]' : ''}`}>
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded border font-mono text-xs font-black ${ep.id === episode.id ? 'bg-[#00C853]/15 border-[#00C853]/50 text-[#69F0AE]' : 'bg-[#0B0D10] border-[#2C313C] text-[#8E95A3]'}`}>#{ep.number}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-bold text-white">{ep.title}</div>
+                  <div className="truncate font-mono text-[10px] text-[#8E95A3]">{ep.subtitle || 'Sin subtítulo'} · T{ep.season} · {dateLabel(ep.date)}</div>
+                </div>
+                {ep.id === episode.id && <span className="rounded bg-[#00C853]/15 border border-[#00C853]/40 px-2 py-0.5 font-mono text-[9px] font-bold text-[#69F0AE]">ACTIVO</span>}
+                <ChevronRight size={14} className="text-[#58606E]"/>
               </button>)}
             </div>
           </section>
-          <div className="space-y-5">
-            <section className={`${panel} space-y-4 p-5`}>
-              <div><h2 className="text-sm font-bold text-white">Nuevo episodio</h2><p className="text-[11px] text-slate-400">Crea un capítulo reutilizando la estructura de la escaleta.</p></div>
-              <input aria-label="Título del nuevo episodio" className={field} placeholder="Título del nuevo capítulo" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
-              <input aria-label="Subtítulo del nuevo episodio" className={field} placeholder="Subtítulo (opcional)" value={newSubtitle} onChange={e=>setNewSubtitle(e.target.value)}/>
-              <button disabled={!newTitle.trim() || busy} className={`${primaryButton} w-full`} onClick={() => void createEpisode(false)}><Plus size={15}/> Crear y activar episodio #{nextEpisodeNumber(library.episodes, episode.number)}</button>
+          <div className="space-y-4">
+            <section className={`${panel} overflow-hidden`}>
+              <div className="atem-module-header">
+                <span className="atem-label text-[#E6E9EF]">NUEVO EPISODIO</span>
+                <span className="font-mono text-[10px] text-[#8E95A3]">CLONA ESCALETA BASE</span>
+              </div>
+              <div className="p-4 space-y-3">
+                <input aria-label="Título del nuevo episodio" className={field} placeholder="Título del nuevo capítulo" value={newTitle} onChange={e=>setNewTitle(e.target.value)}/>
+                <input aria-label="Subtítulo del nuevo episodio" className={field} placeholder="Subtítulo (opcional)" value={newSubtitle} onChange={e=>setNewSubtitle(e.target.value)}/>
+                <button disabled={!newTitle.trim() || busy} className={`${primaryButton} w-full py-2`} onClick={() => void createEpisode(false)}><Plus size={14}/> Crear y activar episodio #{nextEpisodeNumber(library.episodes, episode.number)}</button>
+              </div>
             </section>
-            {draft && <section className={`${panel} space-y-4 p-5`}>
-              <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-bold text-white">Detalles del episodio</h2><p className="text-[11px] text-slate-400">#{draft.number} · {draft.id === episode.id ? 'En estación' : 'Archivado'}</p></div><button className={subtleButton} onClick={()=>downloadJSON(`STDQ_episodio_${draft.number}.json`,draft)}><Download size={13}/> Exportar</button></div>
-              <label className="block space-y-1 text-[11px] text-slate-400">Título<input className={field} value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
-              <label className="block space-y-1 text-[11px] text-slate-400">Subtítulo<input className={field} value={draft.subtitle} onChange={e=>setDraft({...draft,subtitle:e.target.value})}/></label>
-              <div className="grid grid-cols-2 gap-3"><label className="block space-y-1 text-[11px] text-slate-400">Temporada<input className={field} type="number" min="1" value={draft.season} onChange={e=>setDraft({...draft,season:Math.max(1,Number(e.target.value)||1)})}/></label><label className="block space-y-1 text-[11px] text-slate-400">Fecha<input className={field} type="date" value={/^\d{4}-\d{2}-\d{2}$/.test(draft.date)?draft.date:''} onChange={e=>setDraft({...draft,date:e.target.value})}/></label></div>
-              <label className="block space-y-1 text-[11px] text-slate-400">Descripción<textarea className={field} rows={3} value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})}/></label>
-              <label className="block space-y-1 text-[11px] text-slate-400">Etiquetas (separadas por coma)<input className={field} value={(draft.tags||[]).join(', ')} onChange={e=>setDraft({...draft,tags:e.target.value.split(',').map(t=>t.trim()).filter(Boolean)})}/></label>
-              <div className="space-y-2 border-t border-white/10 pt-3"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-white">Conductores e invitados</span><button className={subtleButton} onClick={()=>setDraft({...draft,hosts:[...draft.hosts,{id:crypto.randomUUID(),name:'',role:'Conductor'}]})}><Plus size={12}/> Agregar</button></div>{draft.hosts.map(host=><div key={host.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><input className={field} aria-label="Nombre del conductor" placeholder="Nombre" value={host.name} onChange={e=>setDraft({...draft,hosts:draft.hosts.map(h=>h.id===host.id?{...h,name:e.target.value}:h)})}/><input className={field} aria-label="Rol del conductor" placeholder="Rol" value={host.role} onChange={e=>setDraft({...draft,hosts:draft.hosts.map(h=>h.id===host.id?{...h,role:e.target.value}:h)})}/><button aria-label="Eliminar conductor" className="px-2 text-red-400 hover:text-red-300" onClick={()=>setDraft({...draft,hosts:draft.hosts.filter(h=>h.id!==host.id)})}><Trash2 size={15}/></button></div>)}</div>
-              <div className="grid grid-cols-2 gap-2"><button className={primaryButton} disabled={busy || !draft.title.trim()} onClick={()=>void saveDraft()}><Save size={14}/> Guardar cambios</button><button className={subtleButton} disabled={busy || draft.id === episode.id} onClick={()=>void activateEpisode(library.episodes.find(e => e.id === draft.id) || draft)}><Check size={14}/> Activar episodio</button></div>
-              <div className="flex flex-wrap justify-between gap-2 border-t border-white/10 pt-3"><button className={textButton} onClick={()=>void createEpisode(true)}><Copy size={14}/> Duplicar episodio seleccionado</button><button disabled={draft.id === episode.id || busy} onClick={()=>void removeEpisode(draft)} className="flex items-center gap-1 text-xs font-semibold text-red-400 disabled:opacity-30"><Trash2 size={13}/> Eliminar</button></div>
-              <p className="text-[10px] text-slate-500">La escaleta y contenidos del episodio activo se editan desde Preparación. Cambiar el episodio no cambia automáticamente las escenas de OBS.</p>
+            {draft && <section className={`${panel} overflow-hidden`}>
+              <div className="atem-module-header">
+                <span className="atem-label text-[#E6E9EF]">DETALLES DEL EPISODIO #{draft.number}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[9px] font-bold text-[#8E95A3]">{draft.id === episode.id ? 'EN ESTACIÓN' : 'ARCHIVADO'}</span>
+                  <button className="atem-btn px-2 py-0.5 text-[10px] font-bold text-[#E6E9EF] inline-flex items-center gap-1" onClick={()=>downloadJSON(`STDQ_episodio_${draft.number}.json`,draft)}><Download size={11}/> JSON</button>
+                </div>
+              </div>
+              <div className="p-4 space-y-3">
+                <label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Título<input className={field} value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
+                <label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Subtítulo<input className={field} value={draft.subtitle} onChange={e=>setDraft({...draft,subtitle:e.target.value})}/></label>
+                <div className="grid grid-cols-2 gap-3"><label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Temporada<input className={field} type="number" min="1" value={draft.season} onChange={e=>setDraft({...draft,season:Math.max(1,Number(e.target.value)||1)})}/></label><label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Fecha<input className={field} type="date" value={/^\d{4}-\d{2}-\d{2}$/.test(draft.date)?draft.date:''} onChange={e=>setDraft({...draft,date:e.target.value})}/></label></div>
+                <label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Descripción<textarea className={field} rows={2} value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})}/></label>
+                <label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Etiquetas (separadas por coma)<input className={field} value={(draft.tags||[]).join(', ')} onChange={e=>setDraft({...draft,tags:e.target.value.split(',').map(t=>t.trim()).filter(Boolean)})}/></label>
+                <div className="space-y-2 border-t border-[#252932] pt-3"><div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-wider text-[#E6E9EF]">Conductores e invitados</span><button className={subtleButton} onClick={()=>setDraft({...draft,hosts:[...draft.hosts,{id:crypto.randomUUID(),name:'',role:'Conductor'}]})}><Plus size={11}/> Agregar</button></div>{draft.hosts.map(host=><div key={host.id} className="grid grid-cols-[1fr_1fr_auto] gap-2"><input className={field} aria-label="Nombre del conductor" placeholder="Nombre" value={host.name} onChange={e=>setDraft({...draft,hosts:draft.hosts.map(h=>h.id===host.id?{...h,name:e.target.value}:h)})}/><input className={field} aria-label="Rol del conductor" placeholder="Rol" value={host.role} onChange={e=>setDraft({...draft,hosts:draft.hosts.map(h=>h.id===host.id?{...h,role:e.target.value}:h)})}/><button aria-label="Eliminar conductor" className="px-2 text-[#D91F26] hover:text-rose-300" onClick={()=>setDraft({...draft,hosts:draft.hosts.filter(h=>h.id!==host.id)})}><Trash2 size={14}/></button></div>)}</div>
+                <div className="grid grid-cols-2 gap-2 pt-1"><button className={primaryButton} disabled={busy || !draft.title.trim()} onClick={()=>void saveDraft()}><Save size={13}/> Guardar cambios</button><button className={subtleButton} disabled={busy || draft.id === episode.id} onClick={()=>void activateEpisode(library.episodes.find(e => e.id === draft.id) || draft)}><Check size={13}/> Activar episodio</button></div>
+                <div className="flex flex-wrap justify-between gap-2 border-t border-[#252932] pt-3"><button className={textButton} onClick={()=>void createEpisode(true)}><Copy size={13}/> Duplicar episodio seleccionado</button><button disabled={draft.id === episode.id || busy} onClick={()=>void removeEpisode(draft)} className="flex items-center gap-1 text-[11px] font-bold text-[#D91F26] disabled:opacity-30"><Trash2 size={12}/> Eliminar</button></div>
+                <p className="text-[10px] text-[#58606E]">La escaleta y contenidos del episodio activo se editan desde Preparación. Cambiar el episodio no cambia automáticamente las escenas de OBS.</p>
+              </div>
             </section>}
           </div>
         </div>}
 
-        {!isLoading && tab === 'assets' && <div className="space-y-5">
-          <section className={`${panel} flex flex-wrap items-center justify-between gap-3 p-5`}>
-            <div><h2 className="text-sm font-bold text-white">Medios de producción</h2><p className="mt-1 text-xs text-slate-400">Sube imágenes, videos y audio a la biblioteca local. Máximo 150 MB por archivo.</p></div>
-            <div className="flex flex-wrap items-center gap-2"><select aria-label="Filtrar recursos por tipo" className="rounded-xl border border-white/10 bg-[#16171C] px-3 py-2 text-xs text-white" value={typeFilter} onChange={e=>setTypeFilter(e.target.value as typeof typeFilter)}><option value="all">Todos los tipos</option><option value="image">Imágenes</option><option value="video">Videos</option><option value="audio">Audio</option></select><button className={subtleButton} title="Vista cuadrícula" onClick={()=>void updateSettings({...library.settings,assetView:'grid'})}><LayoutGrid size={15}/></button><button className={subtleButton} title="Vista lista" onClick={()=>void updateSettings({...library.settings,assetView:'list'})}><List size={15}/></button><button className={primaryButton} disabled={busy} onClick={()=>fileRef.current?.click()}><Upload size={14}/> Importar recursos</button></div>
+        {!isLoading && tab === 'assets' && <div className="space-y-4">
+          <section className={`${panel} p-3.5 flex flex-wrap items-center justify-between gap-3`}>
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-white">ATEM Media Pool · Recursos de Producción</h2>
+              <p className="mt-0.5 text-[11px] text-[#8E95A3]">Sube imágenes, videos y audio a la biblioteca local. Máximo 150 MB por archivo.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2"><select aria-label="Filtrar recursos por tipo" className="rounded border border-[#2C313C] bg-[#0B0D10] px-2.5 py-1.5 text-[11px] font-bold text-white outline-none focus:border-[#E58A1F]" value={typeFilter} onChange={e=>setTypeFilter(e.target.value as typeof typeFilter)}><option value="all">Todos los tipos</option><option value="image">Imágenes (Stills)</option><option value="video">Videos (Clips)</option><option value="audio">Audio</option></select><button className={subtleButton} title="Vista cuadrícula" onClick={()=>void updateSettings({...library.settings,assetView:'grid'})}><LayoutGrid size={14}/></button><button className={subtleButton} title="Vista lista" onClick={()=>void updateSettings({...library.settings,assetView:'list'})}><List size={14}/></button><button className={primaryButton} disabled={busy} onClick={()=>fileRef.current?.click()}><Upload size={13}/> Importar recursos</button></div>
             <input ref={fileRef} className="hidden" multiple type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav,audio/x-wav" onChange={e=>void uploadFiles(e.target.files)}/>
           </section>
-          {missingAssets > 0 && <div className="flex gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-300"><CircleAlert size={16}/> {missingAssets} recurso(s) sin archivo físico. Si importaste un JSON en otro equipo, vuelve a cargar los medios correspondientes.</div>}
-          {filteredAssets.length === 0 && <div className={`${panel} p-12 text-center`}><FolderOpen size={30} className="mx-auto mb-2 text-slate-500"/><p className="text-sm font-semibold text-white">No hay recursos disponibles</p><p className="mt-1 text-xs text-slate-400">Importa tu primer archivo o cambia la búsqueda.</p></div>}
-          <div className={library.settings.assetView==='grid'?'grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3':'space-y-3'}>
-            {filteredAssets.map(asset => <article key={asset.id} className={`${panel} overflow-hidden ${library.settings.assetView==='list'?'flex flex-wrap items-center gap-4 p-3':'p-3'}`}>
-              <div className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/40 ${library.settings.assetView==='grid'?'mb-3 aspect-video w-full':'h-20 w-32'}`}>
-                {asset.isMissing ? <CircleAlert size={25} className="text-amber-400"/> : asset.type === 'image' ? <img src={asset.url} alt={asset.name} className="h-full w-full object-contain"/> : asset.type === 'video' ? <video src={asset.url} className="h-full w-full object-contain" muted preload="metadata" controls/> : asset.type === 'audio' ? <div className="flex flex-col items-center gap-2"><Clapperboard size={20} className="text-[#FF6B00]"/><audio src={asset.url} controls preload="none" className="h-8 max-w-[240px]"/></div> : <FileImage size={24} className="text-slate-300"/>}
+          {missingAssets > 0 && <div className="flex gap-2 rounded border border-[#E58A1F]/40 bg-[#E58A1F]/10 p-3 text-xs text-[#FFC078]"><CircleAlert size={15}/> {missingAssets} recurso(s) sin archivo físico. Si importaste un JSON en otro equipo, vuelve a cargar los medios correspondientes.</div>}
+          {filteredAssets.length === 0 && <div className={`${panel} p-10 text-center`}><FolderOpen size={28} className="mx-auto mb-2 text-[#58606E]"/><p className="text-xs font-bold text-white">No hay recursos disponibles en el Media Pool</p><p className="mt-1 text-[11px] text-[#8E95A3]">Importa tu primer archivo o cambia la búsqueda.</p></div>}
+          <div className={library.settings.assetView==='grid'?'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4':'space-y-2.5'}>
+            {filteredAssets.map((asset, idx) => <article key={asset.id} className={`${panel} overflow-hidden ${library.settings.assetView==='list'?'flex flex-wrap items-center gap-4 p-3':'flex flex-col'}`}>
+              <div
+                className={`relative flex shrink-0 items-center justify-center overflow-hidden border-b border-[#252932] ${library.settings.assetView==='grid'?'aspect-video w-full':'h-20 w-36 rounded border'}`}
+                style={{ background: 'repeating-conic-gradient(#12141a 0% 25%, #0a0b0e 0% 50%) 50% / 14px 14px' }}
+              >
+                <span className="absolute left-2 top-2 z-10 rounded bg-black/80 border border-[#2C313C] px-1.5 py-0.5 font-mono text-[9px] font-bold text-[#8E95A3]">
+                  SLOT {String(idx + 1).padStart(2, '0')}
+                </span>
+                {asset.isMissing ? <CircleAlert size={24} className="text-[#E58A1F]"/> : asset.type === 'image' ? <img src={asset.url} alt={asset.name} className="h-full w-full object-contain"/> : asset.type === 'video' ? <video src={asset.url} className="h-full w-full object-contain" muted preload="metadata" controls/> : asset.type === 'audio' ? <div className="flex flex-col items-center gap-2"><Clapperboard size={18} className="text-[#E58A1F]"/><audio src={asset.url} controls preload="none" className="h-8 max-w-[220px]"/></div> : <FileImage size={22} className="text-[#8E95A3]"/>}
               </div>
-              <div className="min-w-0 flex-1 space-y-2"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 title={asset.name} className="truncate text-xs font-bold text-white">{asset.name}</h3><p className="mt-1 text-[10px] text-slate-400">{asset.type.toUpperCase()} · {formatSize(asset.sizeBytes)} · {dateLabel(asset.uploadedAt)}</p></div><span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${asset.isMissing?'bg-amber-500/10 text-amber-300':'bg-emerald-500/10 text-emerald-400'}`}>{asset.isMissing?'SIN ARCHIVO':'DISPONIBLE'}</span></div>
-                <div className="flex flex-wrap gap-1">{(asset.tags || []).slice(0,4).map(t=><span key={t} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-400">{t}</span>)}</div>
-                <div className="flex flex-wrap gap-2 pt-1"><button className={subtleButton} onClick={()=>setAssetEditor({...asset})}><Pencil size={12}/> Editar</button><button className={subtleButton} disabled={asset.isMissing} onClick={()=>{void navigator.clipboard.writeText(`${window.location.origin}${asset.url}`).then(()=>onShowToast('success','Enlace copiado')).catch(()=>onShowToast('warning','No se pudo copiar el enlace'));}}><Copy size={12}/> URL</button><a className={subtleButton} href={asset.isMissing?undefined:asset.url} download={asset.name} onClick={e=>{if(asset.isMissing)e.preventDefault();}}><Download size={12}/></a>
-                  {asset.type === 'image' && <button className={subtleButton} disabled={asset.isMissing} title="Aplicar como logo del programa" onClick={()=>useAsLogo(asset)}><ImagePlus size={12}/> Mosca</button>}
-                  <button className={subtleButton} title="Vincular o desvincular del episodio activo" onClick={()=>void toggleEpisodeAsset(asset)}>{(episode.assetIds||[]).includes(asset.id)?<CheckCircle2 size={12}/>:<Plus size={12}/>} Episodio</button>
-                  <button disabled={busy} onClick={()=>void removeAsset(asset)} title="Eliminar de biblioteca" className="rounded-lg p-2 text-red-400 hover:bg-red-500/10"><Trash2 size={13}/></button>
+              <div className={`min-w-0 flex-1 space-y-2 ${library.settings.assetView==='grid'?'p-3':''}`}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 title={asset.name} className="truncate text-xs font-bold text-white">{asset.name}</h3>
+                    <p className="mt-0.5 font-mono text-[10px] text-[#8E95A3]">{asset.type.toUpperCase()} · {formatSize(asset.sizeBytes)} · {dateLabel(asset.uploadedAt)}</p>
+                  </div>
+                  <span className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-bold ${asset.isMissing?'border-[#E58A1F]/40 bg-[#E58A1F]/10 text-[#FFC078]':'border-[#00C853]/40 bg-[#00C853]/10 text-[#69F0AE]'}`}>{asset.isMissing?'SIN ARCHIVO':'DISPONIBLE'}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">{(asset.tags || []).slice(0,4).map(t=><span key={t} className="rounded bg-[#0B0D10] border border-[#2C313C] px-1.5 py-0.5 font-mono text-[9px] text-[#8E95A3]">{t}</span>)}</div>
+                <div className="flex flex-wrap gap-1.5 pt-1"><button className={subtleButton} onClick={()=>setAssetEditor({...asset})}><Pencil size={11}/> Editar</button><button className={subtleButton} disabled={asset.isMissing} onClick={()=>{void navigator.clipboard.writeText(`${window.location.origin}${asset.url}`).then(()=>onShowToast('success','Enlace copiado')).catch(()=>onShowToast('warning','No se pudo copiar el enlace'));}}><Copy size={11}/> URL</button><a className={subtleButton} href={asset.isMissing?undefined:asset.url} download={asset.name} onClick={e=>{if(asset.isMissing)e.preventDefault();}}><Download size={11}/></a>
+                  {asset.type === 'image' && <button className={subtleButton} disabled={asset.isMissing} title="Aplicar como logo del programa" onClick={()=>useAsLogo(asset)}><ImagePlus size={11}/> Mosca</button>}
+                  <button className={subtleButton} title="Vincular o desvincular del episodio activo" onClick={()=>void toggleEpisodeAsset(asset)}>{(episode.assetIds||[]).includes(asset.id)?<CheckCircle2 size={11} className="text-[#00C853]"/>:<Plus size={11}/>} Episodio</button>
+                  <button disabled={busy} onClick={()=>void removeAsset(asset)} title="Eliminar de biblioteca" className="atem-btn px-2 py-1 text-[#D91F26] hover:bg-[#D91F26]/10"><Trash2 size={12}/></button>
                 </div>
               </div>
             </article>)}
           </div>
-          <p className="text-xs text-slate-500">Los archivos subidos se guardan en <code>.stdq-runtime/media</code>. El enlace sirve para Browser Sources y elementos HTML; un archivo local de OBS Media Source se configura por separado. La carga no inicia reproducción ni transmisión automáticamente.</p>
+          <p className="font-mono text-[10px] text-[#8E95A3]">Los archivos subidos se guardan en <code>.stdq-runtime/media</code>. El enlace sirve para Browser Sources y elementos HTML; un archivo local de OBS Media Source se configura por separado. La carga no inicia reproducción ni transmisión automáticamente.</p>
         </div>}
 
-        {!isLoading && tab === 'backups' && <div className="space-y-5">
-          <section className={`${panel} flex flex-wrap items-center justify-between gap-4 p-5`}><div><h2 className="text-sm font-bold text-white">Respaldo y recuperación</h2><p className="mt-1 text-xs text-slate-400">Los puntos locales guardan el estado actual. El JSON incluye catálogo y configuración, pero no los videos e imágenes físicos.</p></div><div className="flex flex-wrap gap-2"><button className={primaryButton} onClick={createBackup}><Plus size={14}/> Crear respaldo</button><button className={subtleButton} onClick={exportStation}><ArrowDownToLine size={14}/> Exportar estación</button><button className={subtleButton} onClick={()=>importRef.current?.click()}><Upload size={14}/> Importar JSON</button><input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={e=>void importFile(e.target.files?.[0])}/></div></section>
-          <section className={`${panel} overflow-hidden`}><div className="border-b border-white/10 p-4 text-xs font-bold text-white">Puntos de restauración ({backups.length})</div>{backups.length===0 && <p className="p-10 text-center text-xs text-slate-400">Todavía no hay respaldos en este navegador.</p>}{backups.map((b, index) => <div key={`${b.timestamp}-${index}`} className="flex flex-wrap items-center gap-3 border-b border-white/5 p-4"><div className="rounded-xl bg-white/5 p-2 text-slate-300"><Archive size={17}/></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-white">#{b.episode.number} {b.episode.title}</p><p className="text-[11px] text-slate-400">{new Date(b.timestamp).toLocaleString('es-CL')} · {b.library?'Con catálogo':'Solo estación'}</p></div><button className={subtleButton} onClick={()=>downloadJSON(`STDQ_snapshot_${index+1}.json`, b)}><Download size={12}/></button><button className={subtleButton} onClick={()=>void restoreBackup(b)}><RotateCcw size={12}/> Restaurar</button><button className="rounded-lg p-2 text-red-400 hover:bg-red-500/10" onClick={()=>{if(!confirmDestructive('¿Eliminar este punto de restauración?'))return;StorageService.deleteBackup(b.timestamp);setBackups(StorageService.getBackups());}}><Trash2 size={13}/></button></div>)}</section>
+        {!isLoading && tab === 'backups' && <div className="space-y-4">
+          <section className={`${panel} flex flex-wrap items-center justify-between gap-4 p-4`}><div><h2 className="text-xs font-bold uppercase tracking-wider text-white">Respaldo y recuperación de estación</h2><p className="mt-0.5 text-[11px] text-[#8E95A3]">Los puntos locales guardan el estado actual. El JSON incluye catálogo y configuración, pero no los videos e imágenes físicos.</p></div><div className="flex flex-wrap gap-2"><button className={primaryButton} onClick={createBackup}><Plus size={13}/> Crear respaldo</button><button className={subtleButton} onClick={exportStation}><ArrowDownToLine size={13}/> Exportar estación</button><button className={subtleButton} onClick={()=>importRef.current?.click()}><Upload size={13}/> Importar JSON</button><input ref={importRef} type="file" accept="application/json,.json" className="hidden" onChange={e=>void importFile(e.target.files?.[0])}/></div></section>
+          <section className={`${panel} overflow-hidden`}><div className="atem-module-header"><span className="atem-label text-[#E6E9EF]">PUNTOS DE RESTAURACIÓN ({backups.length})</span></div>{backups.length===0 && <p className="p-8 text-center text-xs text-[#8E95A3]">Todavía no hay respaldos en este navegador.</p>}{backups.map((b, index) => <div key={`${b.timestamp}-${index}`} className="flex flex-wrap items-center gap-3 border-b border-[#252932] p-3.5"><div className="rounded border border-[#2C313C] bg-[#0B0D10] p-2 text-[#E58A1F]"><Archive size={15}/></div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-white">#{b.episode.number} {b.episode.title}</p><p className="font-mono text-[10px] text-[#8E95A3]">{new Date(b.timestamp).toLocaleString('es-CL')} · {b.library?'CON CATÁLOGO':'SOLO ESTACIÓN'}</p></div><button className={subtleButton} onClick={()=>downloadJSON(`STDQ_snapshot_${index+1}.json`, b)}><Download size={11}/></button><button className={subtleButton} onClick={()=>void restoreBackup(b)}><RotateCcw size={11}/> Restaurar</button><button className="atem-btn px-2 py-1 text-[#D91F26] hover:bg-[#D91F26]/10" onClick={()=>{if(!confirmDestructive('¿Eliminar este punto de restauración?'))return;StorageService.deleteBackup(b.timestamp);setBackups(StorageService.getBackups());}}><Trash2 size={12}/></button></div>)}</section>
         </div>}
       </div>
 
-      {assetEditor && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Editar recurso"><div className={`${panel} w-full max-w-lg space-y-4 bg-[#16171C] p-6`}><div className="flex justify-between"><h2 className="text-base font-bold text-white">Editar recurso</h2><button onClick={()=>setAssetEditor(null)}><X size={18}/></button></div><label className="block space-y-1 text-xs text-slate-400">Nombre<input className={field} value={assetEditor.name} onChange={e=>setAssetEditor({...assetEditor,name:e.target.value})}/></label><label className="block space-y-1 text-xs text-slate-400">Etiquetas<input className={field} value={(assetEditor.tags||[]).join(', ')} onChange={e=>setAssetEditor({...assetEditor,tags:e.target.value.split(',').map(t=>t.trim()).filter(Boolean)})}/></label><label className="block space-y-1 text-xs text-slate-400">Notas<textarea className={field} rows={3} value={assetEditor.notes||''} onChange={e=>setAssetEditor({...assetEditor,notes:e.target.value})}/></label><p className="break-all font-mono text-[10px] text-slate-500">{assetEditor.url}</p><div className="flex justify-end gap-2"><button className={subtleButton} onClick={()=>setAssetEditor(null)}>Cancelar</button><button className={primaryButton} disabled={busy} onClick={()=>void saveAssetEditor()}><Save size={13}/> Guardar</button></div></div></div>}
+      {assetEditor && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Editar recurso"><div className={`${panel} w-full max-w-lg overflow-hidden shadow-2xl`}><div className="atem-module-header"><span className="atem-label text-[#E6E9EF]">EDITAR RECURSO DE MEDIA POOL</span><button onClick={()=>setAssetEditor(null)} className="text-[#8E95A3] hover:text-white"><X size={16}/></button></div><div className="p-5 space-y-3.5"><label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Nombre<input className={field} value={assetEditor.name} onChange={e=>setAssetEditor({...assetEditor,name:e.target.value})}/></label><label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Etiquetas<input className={field} value={(assetEditor.tags||[]).join(', ')} onChange={e=>setAssetEditor({...assetEditor,tags:e.target.value.split(',').map(t=>t.trim()).filter(Boolean)})}/></label><label className="block space-y-1 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Notas<textarea className={field} rows={3} value={assetEditor.notes||''} onChange={e=>setAssetEditor({...assetEditor,notes:e.target.value})}/></label><p className="break-all font-mono text-[10px] text-[#58606E]">{assetEditor.url}</p><div className="flex justify-end gap-2 pt-2"><button className={subtleButton} onClick={()=>setAssetEditor(null)}>Cancelar</button><button className={primaryButton} disabled={busy} onClick={()=>void saveAssetEditor()}><Save size={12}/> Guardar</button></div></div></div></div>}
 
-      {showSettings && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Preferencias de Biblioteca"><div className={`${panel} w-full max-w-lg space-y-5 bg-[#16171C] p-6`}><div className="flex items-center justify-between"><h2 className="text-base font-bold text-white">Preferencias de Biblioteca</h2><button onClick={()=>setShowSettings(false)}><X size={18}/></button></div><label className="block space-y-2 text-xs text-slate-400">Pestaña inicial<select value={library.settings.startTab} className={field} onChange={e=>void updateSettings({...library.settings,startTab:e.target.value as LibrarySettings['startTab']})}><option value="episodes">Episodios</option><option value="assets">Recursos</option><option value="backups">Respaldos</option></select></label><label className="block space-y-2 text-xs text-slate-400">Vista de recursos<select value={library.settings.assetView} className={field} onChange={e=>void updateSettings({...library.settings,assetView:e.target.value as LibrarySettings['assetView']})}><option value="grid">Cuadrícula</option><option value="list">Lista</option></select></label><label className="flex items-center gap-3 text-xs text-slate-300"><input type="checkbox" checked={library.settings.confirmDeletion} onChange={e=>void updateSettings({...library.settings,confirmDeletion:e.target.checked})}/> Confirmar antes de eliminar recursos y episodios</label><label className="flex items-center gap-3 text-xs text-slate-300"><input type="checkbox" checked={library.settings.backupBeforeSwitch} onChange={e=>void updateSettings({...library.settings,backupBeforeSwitch:e.target.checked})}/> Crear respaldo antes de activar otro episodio</label><div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-[11px] text-amber-200">Los respaldos del navegador pueden perderse al borrar los datos del sitio. Exporta el JSON y conserva por separado la carpeta .stdq-runtime/media.</div><button className={`${primaryButton} w-full`} onClick={()=>setShowSettings(false)}>Cerrar preferencias</button></div></div>}
+      {showSettings && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Preferencias de Biblioteca"><div className={`${panel} w-full max-w-lg overflow-hidden shadow-2xl`}><div className="atem-module-header"><span className="atem-label text-[#E6E9EF]">PREFERENCIAS DE BIBLIOTECA</span><button onClick={()=>setShowSettings(false)} className="text-[#8E95A3] hover:text-white"><X size={16}/></button></div><div className="p-5 space-y-4"><label className="block space-y-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Pestaña inicial<select value={library.settings.startTab} className={field} onChange={e=>void updateSettings({...library.settings,startTab:e.target.value as LibrarySettings['startTab']})}><option value="episodes">Episodios</option><option value="assets">Recursos</option><option value="backups">Respaldos</option></select></label><label className="block space-y-1.5 text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Vista de recursos<select value={library.settings.assetView} className={field} onChange={e=>void updateSettings({...library.settings,assetView:e.target.value as LibrarySettings['assetView']})}><option value="grid">Cuadrícula</option><option value="list">Lista</option></select></label><label className="flex items-center gap-3 text-xs text-[#E6E9EF]"><input type="checkbox" checked={library.settings.confirmDeletion} onChange={e=>void updateSettings({...library.settings,confirmDeletion:e.target.checked})}/> Confirmar antes de eliminar recursos y episodios</label><label className="flex items-center gap-3 text-xs text-[#E6E9EF]"><input type="checkbox" checked={library.settings.backupBeforeSwitch} onChange={e=>void updateSettings({...library.settings,backupBeforeSwitch:e.target.checked})}/> Crear respaldo antes de activar otro episodio</label><div className="rounded border border-[#E58A1F]/30 bg-[#E58A1F]/10 p-3 text-[11px] text-[#FFC078]">Los respaldos del navegador pueden perderse al borrar los datos del sitio. Exporta el JSON y conserva por separado la carpeta .stdq-runtime/media.</div><button className={`${primaryButton} w-full py-2`} onClick={()=>setShowSettings(false)}>Cerrar preferencias</button></div></div></div>}
     </div>
   );
 };

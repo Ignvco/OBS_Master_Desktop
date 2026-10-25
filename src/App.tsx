@@ -45,6 +45,13 @@ export default function App() {
   // Station Application State
   const [activeSpace, setActiveSpace] = useState<NavigationSpace>('inicio');
   const [studioFocusGraphic,setStudioFocusGraphic]=useState<string|null>(null);
+  const [liveFocusGraphic,setLiveFocusGraphic]=useState<string|null>(null);
+  // Only the explicit Diseñar -> En Vivo handoff retains a selected graphic.
+  // Opening En Vivo through general navigation must start with a neutral desk.
+  const navigateWorkspace = (space:NavigationSpace) => {
+    if (space === 'en-vivo') setLiveFocusGraphic(null);
+    setActiveSpace(space);
+  };
   const [episode, setEpisode] = useState<EpisodeData>(() => StorageService.loadEpisode());
   const [components, setComponents] = useState<Record<ComponentType, EditorialComponentConfig>>(() =>
     StorageService.loadDraftComponents()
@@ -61,7 +68,14 @@ export default function App() {
   const [countdown, setCountdown] = useState<CountdownState>(() => StorageService.loadCountdown());
   const [obsStatus, setObsStatus] = useState<OBSStatus>(() => obsService.getStatus());
   const [obsConfig, setObsConfig] = useState<OBSConnectionConfig>(() => obsService.getConfig());
-  const [isProtectedMode, setIsProtectedMode] = useState(true);
+  const [isProtectedMode, setIsProtectedMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('stdq_obs_master_protected_mode_v3');
+      return saved !== null ? saved !== 'false' : true;
+    } catch {
+      return true;
+    }
+  });
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [livePending, setLivePending] = useState<string[]>([]);
@@ -609,18 +623,29 @@ export default function App() {
     showToast('info', 'Cuenta Regresiva Restablecida');
   };
 
+  const activeGraphicsCount =
+    Object.values(publishedComponents).filter((c) => c.visibleInOBS).length +
+    Object.values(publishedCustomComponents).filter((c) => c.visibleInOBS).length;
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#090A0E] text-slate-100 overflow-hidden font-sans">
-      {/* Apple HIG Header Navigation */}
+    <div className="flex flex-col h-screen w-screen atem-chassis text-slate-100 overflow-hidden font-sans">
+      {/* ATEM Master Control Topbar */}
       <Header
         activeSpace={activeSpace}
-        onNavigate={setActiveSpace}
+        onNavigate={navigateWorkspace}
         obsStatus={obsStatus}
         isProtectedMode={isProtectedMode}
-        onToggleProtectedMode={() => setIsProtectedMode(!isProtectedMode)}
+        onToggleProtectedMode={() => {
+          const next = !isProtectedMode;
+          setIsProtectedMode(next);
+          try {
+            localStorage.setItem('stdq_obs_master_protected_mode_v3', String(next));
+          } catch {}
+        }}
         onOpenConnectionModal={() => setIsConnectionModalOpen(true)}
         onToggleVirtualCam={handleToggleVirtualCam}
         episodeNumber={episode.number}
+        activeGraphicsCount={activeGraphicsCount}
       />
 
       {/* Main Workspace Frame */}
@@ -633,7 +658,7 @@ export default function App() {
             customComponents={publishedCustomComponents}
             countdown={countdown}
             components={publishedComponents}
-            onNavigate={setActiveSpace}
+            onNavigate={navigateWorkspace}
             onStartCountdown={handleStartCountdown}
             onPauseCountdown={handlePauseCountdown}
             onResetCountdown={handleResetCountdown}
@@ -692,6 +717,8 @@ export default function App() {
             onToggleComponentVisibility={handleToggleComponentVisibility}
             onReplayGraphic={handleReplayGraphic}
             onEditGraphic={id=>{setStudioFocusGraphic(id);setActiveSpace('content-studio');}}
+            focusGraphicId={liveFocusGraphic}
+            onClearGraphicFocus={() => setLiveFocusGraphic(null)}
             onHideAllComponents={handleHideAllComponents}
             onStartCountdown={handleStartCountdown}
             onPauseCountdown={handlePauseCountdown}
@@ -724,6 +751,7 @@ export default function App() {
             focusGraphicId={studioFocusGraphic}
             onToggleVisibility={handleToggleComponentVisibility}
             onSendToOBS={handleToggleComponentVisibility}
+            onGoLive={id => {setLiveFocusGraphic(id);setActiveSpace('en-vivo');}}
           />
         )}
 

@@ -345,8 +345,8 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({
 
           <div className="space-y-2.5 text-xs">
             <div className="flex items-center justify-between p-2 rounded-xl bg-black/30 border border-white/5">
-              <span className="text-slate-400">Cámara de Entrada:</span>
-              <span className="font-semibold text-white">EMEET 4K WebCam (3840×2160)</span>
+              <span className="text-slate-400">Fuentes de Video:</span>
+              <span className="font-mono text-slate-300">Gestionadas en escena OBS</span>
             </div>
 
             <div className="flex items-center justify-between p-2 rounded-xl bg-black/30 border border-white/5">
@@ -356,7 +356,7 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({
 
             <div className="flex items-center justify-between p-2 rounded-xl bg-black/30 border border-white/5">
               <span className="text-slate-400">Codificador de Salida:</span>
-              <span className="font-semibold text-emerald-400 font-mono">NVENC H.264 Acelerado</span>
+              <span className="font-mono text-slate-300">Definido en perfil de OBS Studio</span>
             </div>
 
             <div className="flex items-center justify-between p-2 rounded-xl bg-black/30 border border-white/5">
@@ -365,9 +365,9 @@ export const PerformanceTab: React.FC<PerformanceTabProps> = ({
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>Transmisión fluida sin saturación de GPU ni pérdida de paquetes.</span>
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 text-[11px] text-slate-300 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>{hasTelemetry ? 'Telemetría recibida desde OBS WebSocket v5.' : 'Conecta OBS WebSocket para verificar telemetría real de renderizado.'}</span>
           </div>
         </div>
       </div>
