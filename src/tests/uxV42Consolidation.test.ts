@@ -90,6 +90,8 @@ test('UX V4.2 ATEM Broadcast Surface: enforces hardware tally semantics, protect
 
   assert.ok(app.includes('stdq_obs_master_protected_mode_v3'));
   assert.ok(app.includes('activeGraphicsCount'));
+  assert.ok(header.includes('obsStatus.currentProgramScene'));
+  assert.ok(!header.includes('obsStatus.currentScene'));
 
   assert.ok(live.includes('PREVIEW · PREPARACIÓN'));
   assert.ok(live.includes('PROGRAM · SALIDA OBS'));

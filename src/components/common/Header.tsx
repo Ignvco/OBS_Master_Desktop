@@ -139,10 +139,10 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="font-bold text-slate-200">#{episodeNumber}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${obsStatus.connected && obsStatus.currentScene ? 'bg-red-500 shadow-[0_0_6px_#ef4444]' : 'bg-slate-600'}`} />
+            <span className={`w-2 h-2 rounded-full ${obsStatus.connected && obsStatus.currentProgramScene ? 'bg-red-500 shadow-[0_0_6px_#ef4444]' : 'bg-slate-600'}`} />
             <span className="text-[9px] font-bold text-red-400 uppercase">PGM</span>
-            <span className="text-slate-200 font-semibold max-w-[110px] truncate" title={obsStatus.currentScene || 'Sin escena Program'}>
-              {obsStatus.connected ? (obsStatus.currentScene || '—') : 'OFFLINE'}
+            <span className="text-slate-200 font-semibold max-w-[110px] truncate" title={obsStatus.currentProgramScene || 'Sin escena Program'}>
+              {obsStatus.connected ? (obsStatus.currentProgramScene || '—') : 'OFFLINE'}
             </span>
           </div>
           {obsStatus.connected && obsStatus.studioMode && (
