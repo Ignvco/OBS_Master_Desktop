@@ -80,3 +80,27 @@ test('UX V4.2: ergonomics offer compact schematic views and editor height optimi
   assert.ok(styles.includes('@media (max-height: 820px)'));
   assert.ok(styles.includes('UX V4.2 Etapa 4'));
 });
+
+test('UX V4.2 ATEM Broadcast Surface: enforces hardware tally semantics, protected mode persistence, and truthful telemetry', () => {
+  assert.ok(styles.includes('--tally-program: #D91F26'));
+  assert.ok(styles.includes('--tally-preview: #00C853'));
+  assert.ok(styles.includes('.atem-chassis'));
+  assert.ok(styles.includes('.atem-btn-pgm'));
+  assert.ok(styles.includes('.atem-btn-pvw'));
+
+  assert.ok(app.includes('stdq_obs_master_protected_mode_v3'));
+  assert.ok(app.includes('activeGraphicsCount'));
+
+  assert.ok(live.includes('PREVIEW · PREPARACIÓN'));
+  assert.ok(live.includes('PROGRAM · SALIDA OBS'));
+  assert.ok(live.includes('M/E 1 · BANCO DE ESCENAS OBS'));
+  assert.ok(live.includes('DOWNSTREAM KEYERS · MATRIZ DE GRÁFICAS EN PROGRAM'));
+
+  assert.ok(home.includes('disabled={!obsStatus.connected}'));
+
+  const obsSettings = source('src/components/spaces/OBSSettingsTab.tsx');
+  assert.ok(!obsSettings.includes('/OBS-Master-v3.0.1.zip'));
+
+  const perf = source('src/components/spaces/PerformanceTab.tsx');
+  assert.ok(!perf.includes('EMEET 4K WebCam'));
+});

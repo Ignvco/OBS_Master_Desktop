@@ -45,44 +45,48 @@ export function RecoveryCenter({ obsStatus }: { obsStatus: OBSStatus }) {
     const a = document.createElement('a'); a.href = url; a.download = 'STDQ_DIAGNOSTICO_SIN_CREDENCIALES.json'; a.click();
     setTimeout(()=>URL.revokeObjectURL(url), 1500);
   };
-  return <div className="space-y-5 max-w-5xl">
-    <div className="rounded-3xl glass-panel p-6 border border-white/10">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div><h2 className="font-extrabold text-xl text-white flex items-center gap-2"><ShieldCheck className="w-6 h-6 text-[#FF6B00]"/> Recovery Center</h2>
-          <p className="text-slate-400 text-sm mt-1">Diagnóstico y respaldos de producción. Sin contraseñas WebSocket.</p></div>
-        <button onClick={()=>void refresh()} disabled={busy} className="bg-white/10 text-white px-4 py-2 rounded-xl text-sm border border-white/10 hover:bg-white/15 disabled:opacity-40 flex gap-2 items-center"><RefreshCw size={15}/> Actualizar diagnóstico</button>
+  return <div className="space-y-4 max-w-5xl">
+    <div className="atem-module overflow-hidden">
+      <div className="atem-module-header">
+        <span className="atem-label text-[#E6E9EF] flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#E58A1F]"/> RECOVERY CENTER · DIAGNÓSTICO DE ESTACIÓN</span>
+        <button onClick={()=>void refresh()} disabled={busy} className="atem-btn px-3 py-1 text-[10px] font-bold text-[#E6E9EF] disabled:opacity-40 inline-flex gap-1.5 items-center"><RefreshCw size={12}/> Actualizar diagnóstico</button>
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <div className="rounded-2xl p-4 bg-black/30 border border-white/10"><p className="text-xs text-slate-400">OBS WebSocket</p><p className={`font-bold mt-2 ${obsStatus.connected?'text-emerald-300':'text-amber-300'}`}>{obsStatus.connected?'Conectado':'Desconectado'}</p></div>
-        <div className="rounded-2xl p-4 bg-black/30 border border-white/10"><p className="text-xs text-slate-400">Cámara virtual</p><p className="font-bold mt-2">{obsStatus.virtualCamActive?'Activa':'Inactiva'}</p></div>
-        <div className="rounded-2xl p-4 bg-black/30 border border-white/10"><p className="text-xs text-slate-400">Respaldos disponibles</p><p className="font-bold mt-2">{snapshot?.backups.length ?? '—'}</p></div>
+      <div className="p-4 space-y-4">
+        <p className="text-[#8E95A3] text-xs">Diagnóstico de integridad y respaldos de producción verificados con SHA-256. Sin contraseñas WebSocket.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <div className="atem-readout p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">OBS WebSocket</p><p className={`font-mono text-xs font-bold mt-1.5 ${obsStatus.connected?'text-[#00C853]':'text-[#E58A1F]'}`}>{obsStatus.connected?'CONECTADO':'DESCONECTADO'}</p></div>
+          <div className="atem-readout p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Cámara virtual</p><p className={`font-mono text-xs font-bold mt-1.5 ${obsStatus.virtualCamActive?'text-[#D91F26]':'text-[#8E95A3]'}`}>{obsStatus.virtualCamActive?'ACTIVA (AL AIRE)':'INACTIVA'}</p></div>
+          <div className="atem-readout p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#8E95A3]">Respaldos disponibles</p><p className="font-mono text-xs font-bold mt-1.5 text-white">{snapshot?.backups.length ?? '—'}</p></div>
+        </div>
+        <div className="space-y-1.5 atem-well p-3">
+          {snapshot?.diagnostics.checks.map(item => <div key={item.id} className="flex items-center gap-2 text-xs"><FileCheck2 size={14} className={item.ok?'text-[#00C853]':'text-[#D91F26]'}/><span className="font-mono font-bold text-white">{item.id}</span><span className="text-[#8E95A3]">— {item.description}</span></div>)}
+        </div>
+        <button onClick={exportReport} disabled={!snapshot} className="atem-btn px-3 py-1.5 text-[11px] font-bold text-[#FFC078] disabled:opacity-50">Exportar diagnóstico (sin secretos)</button>
       </div>
-      <div className="mt-4 space-y-2">
-        {snapshot?.diagnostics.checks.map(item => <div key={item.id} className="flex items-center gap-2 text-sm"><FileCheck2 size={16} className={item.ok?'text-emerald-400':'text-rose-400'}/><span className="font-semibold">{item.id}</span><span className="text-slate-400">— {item.description}</span></div>)}
-      </div>
-      <button onClick={exportReport} disabled={!snapshot} className="mt-4 text-[#FF8A3C] text-sm font-semibold hover:underline disabled:opacity-50">Exportar diagnóstico (sin secretos)</button>
     </div>
-    <div className="rounded-3xl glass-panel p-6 border border-white/10 space-y-4">
-      <div className="flex flex-wrap gap-4 justify-between items-center">
-        <div><h3 className="text-lg font-bold flex gap-2 items-center"><DatabaseBackup className="text-[#FF6B00]" size={20}/> Puntos de recuperación</h3>
-          <p className="text-sm text-slate-400 mt-1">Hasta 5 copias locales de Biblioteca, gráficas, imágenes y medios (máx. 512 MB por respaldo). Crea respaldos antes o después de emitir.</p></div>
-        <button disabled={busy || obsStatus.virtualCamActive} onClick={()=>void execute('backup')} className="px-4 py-2 rounded-xl bg-[#FF6B00] hover:bg-[#FA7A26] text-white font-semibold text-sm disabled:opacity-50 flex items-center gap-2"><HardDriveDownload size={17}/> Crear respaldo</button>
+    <div className="atem-module overflow-hidden">
+      <div className="atem-module-header">
+        <span className="atem-label text-[#E6E9EF] flex items-center gap-1.5"><DatabaseBackup className="text-[#E58A1F]" size={14}/> PUNTOS DE RECUPERACIÓN EN DISCO</span>
+        <button disabled={busy || obsStatus.virtualCamActive} onClick={()=>void execute('backup')} className="atem-btn atem-btn-amber px-3 py-1 text-[#FFC078] font-bold text-[10px] disabled:opacity-50 inline-flex items-center gap-1.5"><HardDriveDownload size={13}/> Crear respaldo</button>
       </div>
-      {snapshot?.backups.length ? <div className="space-y-2">
-        {snapshot.backups.map(b => <label key={b.id} className={`flex gap-3 items-center p-3 rounded-xl border cursor-pointer ${selection===b.id?'border-[#FF6B00] bg-[#FF6B00]/10':'border-white/10 bg-black/20'}`}>
-          <input type="radio" name="recovery-backup" checked={selection===b.id} onChange={()=>{setSelection(b.id);setConfirmText('');}}/>
-          <div className="flex-1"><p className="font-semibold text-sm">{new Date(b.createdAt).toLocaleString('es-CL')}</p><p className="text-xs text-slate-400">{b.files.length} archivos · {(b.totalBytes/1024/1024).toFixed(1)} MB</p></div>
-        </label>)}
-      </div> : <p className="text-sm text-slate-500">Todavía no hay puntos de recuperación.</p>}
-      {selection && <div className="border border-amber-500/30 rounded-xl bg-amber-500/10 p-4 space-y-3">
-        <p className="text-sm text-amber-200 flex items-center gap-2"><AlertTriangle size={18}/> Restaurar reemplaza el estado guardado. Solo en mantenimiento, nunca al aire. Se crea un respaldo previo.</p>
-        <label className="text-xs text-slate-300 block">Escribe RESTAURAR para continuar
-          <input className="block mt-2 w-full sm:w-64 bg-black/40 border border-white/20 rounded-xl px-3 py-2 text-white" value={confirmText} onChange={e=>setConfirmText(e.target.value)} placeholder="RESTAURAR"/>
-        </label>
-        <button className="rounded-xl px-4 py-2 border border-amber-500/40 bg-amber-600/20 text-amber-200 text-sm font-bold disabled:opacity-40 flex items-center gap-2" onClick={()=>void execute('restore')} disabled={busy || obsStatus.connected || obsStatus.virtualCamActive || confirmText!=='RESTAURAR'}><ArchiveRestore size={16}/> Restaurar (solo fuera de emisión)</button>
-      </div>}
-      {notice && <div role="status" className="text-sm text-emerald-300 flex gap-3 items-center"><span>{notice}</span>{notice.startsWith('Restauración') && <button className="text-[#FF8A3C] underline" onClick={()=>window.location.reload()}>Recargar ahora</button>}</div>}
-      {fault && <p role="alert" className="text-sm text-rose-300">{fault}</p>}
+      <div className="p-4 space-y-3">
+        <p className="text-xs text-[#8E95A3]">Hasta 5 copias locales de Biblioteca, gráficas, imágenes y medios (máx. 512 MB por respaldo). Crea respaldos antes o después de emitir.</p>
+        {snapshot?.backups.length ? <div className="space-y-2">
+          {snapshot.backups.map(b => <label key={b.id} className={`flex gap-3 items-center p-3 rounded border cursor-pointer ${selection===b.id?'border-[#E58A1F] bg-[#E58A1F]/10':'border-[#2C313C] bg-[#0B0D10]'}`}>
+            <input type="radio" name="recovery-backup" checked={selection===b.id} onChange={()=>{setSelection(b.id);setConfirmText('');}}/>
+            <div className="flex-1"><p className="font-mono font-bold text-xs text-white">{new Date(b.createdAt).toLocaleString('es-CL')}</p><p className="font-mono text-[10px] text-[#8E95A3]">{b.files.length} archivos · {(b.totalBytes/1024/1024).toFixed(1)} MB</p></div>
+          </label>)}
+        </div> : <p className="text-xs text-[#58606E]">Todavía no hay puntos de recuperación.</p>}
+        {selection && <div className="border border-[#E58A1F]/40 rounded bg-[#E58A1F]/10 p-3.5 space-y-3">
+          <p className="text-xs text-[#FFC078] flex items-center gap-2"><AlertTriangle size={15}/> Restaurar reemplaza el estado guardado. Solo en mantenimiento, nunca al aire. Se crea un respaldo previo.</p>
+          <label className="text-[11px] font-bold text-[#E6E9EF] block">Escribe RESTAURAR para continuar
+            <input className="block mt-1.5 w-full sm:w-64 bg-[#0B0D10] border border-[#2C313C] rounded px-3 py-1.5 font-mono text-xs text-white outline-none focus:border-[#E58A1F]" value={confirmText} onChange={e=>setConfirmText(e.target.value)} placeholder="RESTAURAR"/>
+          </label>
+          <button className="atem-btn atem-btn-amber px-3.5 py-1.5 text-[#FFC078] text-xs font-bold disabled:opacity-40 inline-flex items-center gap-2" onClick={()=>void execute('restore')} disabled={busy || obsStatus.connected || obsStatus.virtualCamActive || confirmText!=='RESTAURAR'}><ArchiveRestore size={14}/> Restaurar (solo fuera de emisión)</button>
+        </div>}
+        {notice && <div role="status" className="text-xs text-[#69F0AE] flex gap-3 items-center"><span>{notice}</span>{notice.startsWith('Restauración') && <button className="text-[#FFC078] underline font-bold" onClick={()=>window.location.reload()}>Recargar ahora</button>}</div>}
+        {fault && <p role="alert" className="text-xs text-[#FF8A80]">{fault}</p>}
+      </div>
     </div>
   </div>;
 }
