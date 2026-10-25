@@ -68,7 +68,14 @@ export default function App() {
   const [countdown, setCountdown] = useState<CountdownState>(() => StorageService.loadCountdown());
   const [obsStatus, setObsStatus] = useState<OBSStatus>(() => obsService.getStatus());
   const [obsConfig, setObsConfig] = useState<OBSConnectionConfig>(() => obsService.getConfig());
-  const [isProtectedMode, setIsProtectedMode] = useState(true);
+  const [isProtectedMode, setIsProtectedMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('stdq_obs_master_protected_mode_v3');
+      return saved !== null ? saved !== 'false' : true;
+    } catch {
+      return true;
+    }
+  });
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [livePending, setLivePending] = useState<string[]>([]);
@@ -616,18 +623,29 @@ export default function App() {
     showToast('info', 'Cuenta Regresiva Restablecida');
   };
 
+  const activeGraphicsCount =
+    Object.values(publishedComponents).filter((c) => c.visibleInOBS).length +
+    Object.values(publishedCustomComponents).filter((c) => c.visibleInOBS).length;
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#090A0E] text-slate-100 overflow-hidden font-sans">
-      {/* Apple HIG Header Navigation */}
+    <div className="flex flex-col h-screen w-screen atem-chassis text-slate-100 overflow-hidden font-sans">
+      {/* ATEM Master Control Topbar */}
       <Header
         activeSpace={activeSpace}
         onNavigate={navigateWorkspace}
         obsStatus={obsStatus}
         isProtectedMode={isProtectedMode}
-        onToggleProtectedMode={() => setIsProtectedMode(!isProtectedMode)}
+        onToggleProtectedMode={() => {
+          const next = !isProtectedMode;
+          setIsProtectedMode(next);
+          try {
+            localStorage.setItem('stdq_obs_master_protected_mode_v3', String(next));
+          } catch {}
+        }}
         onOpenConnectionModal={() => setIsConnectionModalOpen(true)}
         onToggleVirtualCam={handleToggleVirtualCam}
         episodeNumber={episode.number}
+        activeGraphicsCount={activeGraphicsCount}
       />
 
       {/* Main Workspace Frame */}

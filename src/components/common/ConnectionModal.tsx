@@ -76,109 +76,109 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div className="relative w-full max-w-2xl glass-panel-elevated rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
+      <div className="relative w-full max-w-2xl atem-module border border-[#2e3646] shadow-[0_24px_64px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/[0.02] shrink-0">
+        <div className="atem-module-header px-5 py-3.5 shrink-0">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-colors ${
+            <div className={`w-9 h-9 rounded flex items-center justify-center border transition-colors ${
               status.connected
-                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                : 'bg-[#FF6B00]/15 border-[#FF6B00]/30 text-[#FF6B00]'
+                ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-400'
+                : 'bg-[#07090c] border-[#2e3646] text-sky-400'
             }`}>
-              <Radio className={`w-5 h-5 ${status.connecting ? 'animate-spin' : status.connected ? 'animate-pulse' : ''}`} />
+              <Radio className={`w-4 h-4 ${status.connecting ? 'animate-spin' : status.connected ? 'animate-pulse' : ''}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white tracking-tight">
+                <h3 className="text-sm font-black uppercase tracking-wider text-white">
                   Conexión en Vivo a OBS Studio
                 </h3>
-                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
                   status.connected
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                     : status.connecting
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                    : 'bg-red-500/20 text-red-300 border border-red-500/40'
                 }`}>
                   {status.connected ? 'CONECTADO EN VIVO' : status.connecting ? 'CONECTANDO...' : 'DESCONECTADO'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Protocolo OBS WebSocket v5 (Puerto estándar 4455)
+              <p className="text-[11px] font-mono text-slate-400 mt-0.5">
+                OBS WEBSOCKET V5 · PUERTO ESTÁNDAR 4455
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+            className="atem-btn p-1.5 text-slate-400 hover:text-white"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1 bg-[#0d1015]">
           {/* Connection Parameters Form */}
-          <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Wifi className="w-3.5 h-3.5 text-[#FF6B00]" />
+          <div className="p-4 rounded bg-[#11141a] border border-[#252b37] space-y-3.5">
+            <div className="flex items-center justify-between border-b border-[#1f2530] pb-2">
+              <span className="atem-label flex items-center gap-2 text-slate-200">
+                <Wifi className="w-3.5 h-3.5 text-sky-400" />
                 <span>Parámetros de Servidor OBS</span>
               </span>
-              <span className="text-[11px] font-mono text-[#FF6B00]">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#06080b] border border-[#222834] text-sky-400">
                 {computedUrl}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-xs font-medium text-slate-300">Dirección IP / Host</label>
+              <div className="sm:col-span-2 space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Dirección IP / Host</label>
                 <input
                   type="text"
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
                   placeholder="127.0.0.1 (local)"
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm text-white font-mono"
+                  className="w-full px-3 py-2 rounded glass-input text-xs text-white font-mono"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-300">Puerto WebSocket</label>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Puerto WebSocket</label>
                 <input
                   type="number"
                   value={port}
                   onChange={(e) => setPort(Number(e.target.value))}
                   placeholder="4455"
-                  className="w-full px-3.5 py-2.5 rounded-xl glass-input text-sm text-white font-mono"
+                  className="w-full px-3 py-2 rounded glass-input text-xs text-white font-mono"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
                 <span>Contraseña de Autenticación</span>
-                <span className="text-slate-500 font-normal">Dejar vacío si no tiene contraseña en OBS</span>
+                <span className="text-slate-500 font-normal normal-case">Vacío si OBS no exige clave</span>
               </label>
               <div className="relative">
-                <Key className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                <Key className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Contraseña configurada en OBS Studio..."
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl glass-input text-sm text-white font-mono"
+                  className="w-full pl-9 pr-3 py-2 rounded glass-input text-xs text-white font-mono"
                 />
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-white/5">
-              <label className="flex items-center gap-2.5 cursor-pointer">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-[#1f2530]">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={autoConnect}
                   onChange={(e) => setAutoConnect(e.target.checked)}
-                  className="accent-[#FF6B00] rounded"
+                  className="accent-sky-400 rounded"
                 />
                 <span className="text-xs text-slate-300 font-medium">
                   Conectar automáticamente al iniciar la estación
@@ -190,7 +190,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                   type="checkbox"
                   checked={useSsl}
                   onChange={(e) => setUseSsl(e.target.checked)}
-                  className="accent-sky-500 rounded"
+                  className="accent-sky-400 rounded"
                 />
                 <span className="text-xs text-slate-300 font-mono">
                   Usar SSL (wss://)
@@ -199,81 +199,79 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
             </div>
 
             {isHttps && !useSsl && (
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200/90 leading-relaxed">
-                <strong>Aviso de seguridad del navegador:</strong> Al estar cargando esta app en HTTPS, Google Chrome/Firefox pueden bloquear conexiones a <code>ws://127.0.0.1</code> por política de contenido mixto.
-                <br />
-                <strong>Solución rápida:</strong> Abre la app localmente en <code>http://localhost:3000</code> o en la barra de URL haz clic en Configuración del sitio y permite <em>Contenido no seguro</em>.
+              <div className="p-3 rounded bg-amber-950/30 border border-amber-500/40 text-xs text-amber-200 leading-relaxed">
+                <strong>Aviso de seguridad del navegador:</strong> Al estar cargando esta app en HTTPS, el navegador puede bloquear conexiones a <code>ws://127.0.0.1</code>. Usa la app local o habilita contenido local.
               </div>
             )}
           </div>
 
           {/* Connected OBS Telemetry & Scenes Inspection */}
           {status.connected && (
-            <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 space-y-3">
+            <div className="p-3.5 rounded bg-emerald-950/20 border border-emerald-500/40 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
+                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
                   <Check className="w-4 h-4" />
                   <span>OBS Studio Sincronizado en Vivo</span>
                 </div>
                 <button
                   onClick={handleSyncScenes}
-                  className="text-[11px] font-bold text-white px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 flex items-center gap-1.5 transition-colors"
+                  className="atem-btn text-[11px] font-bold text-white px-2.5 py-1 flex items-center gap-1.5"
                 >
-                  <RefreshCw className="w-3 h-3" />
+                  <RefreshCw className="w-3 h-3 text-emerald-400" />
                   <span>Sincronizar Escenas</span>
                 </button>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                  <span className="text-[10px] text-slate-400 block">Latencia</span>
-                  <span className="text-sm font-bold text-white font-mono">{status.latencyMs} ms</span>
+                <div className="p-2 atem-readout">
+                  <span className="text-[9px] uppercase text-slate-500 block">Latencia</span>
+                  <span className="text-sm font-bold text-white">{status.latencyMs} ms</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                  <span className="text-[10px] text-slate-400 block">Carga CPU</span>
-                  <span className="text-sm font-bold text-white font-mono">{status.cpuUsagePercent}%</span>
+                <div className="p-2 atem-readout">
+                  <span className="text-[9px] uppercase text-slate-500 block">Carga CPU</span>
+                  <span className="text-sm font-bold text-white">{status.cpuUsagePercent}%</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                  <span className="text-[10px] text-slate-400 block">FPS</span>
-                  <span className="text-sm font-bold text-white font-mono">{status.fps}</span>
+                <div className="p-2 atem-readout">
+                  <span className="text-[9px] uppercase text-slate-500 block">FPS</span>
+                  <span className="text-sm font-bold text-white">{status.fps}</span>
                 </div>
-                <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                  <span className="text-[10px] text-slate-400 block">Cámara Virtual</span>
-                  <span className={`text-sm font-bold font-mono ${status.virtualCamActive ? 'text-sky-400' : 'text-slate-400'}`}>
+                <div className="p-2 atem-readout">
+                  <span className="text-[9px] uppercase text-slate-500 block">Cámara Virtual</span>
+                  <span className={`text-sm font-bold ${status.virtualCamActive ? 'text-sky-400' : 'text-slate-400'}`}>
                     {status.virtualCamActive ? 'ACTIVA' : 'INACTIVA'}
                   </span>
                 </div>
               </div>
 
-              <div className="text-[11px] text-slate-300 pt-1">
-                Escenas detectadas en OBS ({status.scenes.length}):{' '}
+              <div className="text-[11px] text-slate-300 pt-1 font-mono">
+                ESCENAS ({status.scenes.length}):{' '}
                 <strong className="text-white">
-                  {status.scenes.map(s => s.name).join(', ')}
+                  {status.scenes.map(s => s.name).join(' · ')}
                 </strong>
               </div>
             </div>
           )}
 
           {/* Live Diagnostic Logs Console */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Terminal className="w-3.5 h-3.5 text-[#FF6B00]" />
+              <span className="atem-label flex items-center gap-2 text-slate-300">
+                <Terminal className="w-3.5 h-3.5 text-sky-400" />
                 <span>Consola de Diagnóstico & Eventos OBS</span>
               </span>
               <span className="text-[10px] text-slate-500 font-mono">Últimos {logs.length} eventos</span>
             </div>
 
-            <div className="h-40 p-3 rounded-xl bg-black/80 border border-white/10 font-mono text-[11px] overflow-y-auto space-y-1.5">
+            <div className="h-36 p-3 atem-readout text-[11px] overflow-y-auto space-y-1">
               {logs.length === 0 ? (
                 <div className="text-slate-500 italic">No hay registros aún...</div>
               ) : (
                 logs.map((log, index) => (
                   <div key={index} className="flex items-start gap-2 leading-relaxed">
                     <span className="text-slate-500 shrink-0">[{log.time}]</span>
-                    <span className={`font-semibold shrink-0 uppercase text-[9px] px-1 py-0.2 rounded ${
+                    <span className={`font-bold shrink-0 uppercase text-[9px] px-1 py-0.2 rounded ${
                       log.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' :
-                      log.type === 'error' ? 'bg-rose-500/20 text-rose-400' :
+                      log.type === 'error' ? 'bg-red-500/20 text-red-400' :
                       log.type === 'warn' ? 'bg-amber-500/20 text-amber-400' :
                       'bg-sky-500/20 text-sky-400'
                     }`}>
@@ -287,39 +285,39 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
           </div>
 
           {/* StreamYard Architecture Reminder */}
-          <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/20 text-xs text-slate-300 space-y-1">
-            <span className="font-bold text-sky-400 block">Flujo de Emisión en Vivo:</span>
+          <div className="p-3 rounded bg-[#11141a] border border-[#252b37] text-xs text-slate-300 space-y-1">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-400 block">Cadena de Señal Broadcast (OBS ➔ StreamYard):</span>
             <p className="text-[11px] text-slate-300 leading-relaxed">
-              1. OBS Studio recibe la cámara EMEET 4K y las gráficas HTML de esta estación.
-              2. Al presionar <strong>Cámara Virtual</strong> en OBS Master, la señal se envía a Windows DirectShow.
-              3. En StreamYard seleccionas <strong>OBS Virtual Camera</strong> y transmites hacia YouTube/Facebook.
+              1. OBS Studio compone las cámaras y las Browser Sources locales de esta estación.
+              2. El interruptor <strong>Cámara OBS</strong> entrega la señal de video por DirectShow.
+              3. En StreamYard se selecciona <strong>OBS Virtual Camera</strong> para la emisión externa.
             </p>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 bg-white/[0.02] shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-[#252b37] bg-[#141820] shrink-0">
           <div>
             {status.connected ? (
               <button
                 type="button"
                 onClick={handleDisconnect}
-                className="px-4 py-2 text-xs font-bold text-rose-400 hover:text-rose-300 rounded-xl hover:bg-rose-500/10 transition-colors"
+                className="atem-btn px-3 py-1.5 text-xs font-bold text-red-300 border-red-500/40 hover:border-red-400"
               >
                 Desconectar de OBS
               </button>
             ) : (
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-[11px] text-slate-400 font-mono">
                 Puerto por defecto en OBS Studio: 4455
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors"
+              className="atem-btn px-4 py-1.5 text-xs font-bold"
             >
               Cerrar
             </button>
@@ -328,7 +326,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
               type="button"
               onClick={handleSaveAndConnect}
               disabled={isTesting}
-              className="flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-[#FF6B00] hover:bg-[#ff7a1a] rounded-xl shadow-lg shadow-[#FF6B00]/25 transition-all disabled:opacity-50"
+              className="atem-btn atem-btn-pvw flex items-center gap-2 px-4 py-1.5 text-xs font-extrabold disabled:opacity-50"
             >
               {isTesting ? (
                 <>
