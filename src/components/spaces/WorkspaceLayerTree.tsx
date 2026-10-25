@@ -51,20 +51,20 @@ export const WorkspaceLayerTree:React.FC<Props>=({config,selectedId,selectedIds=
       onUpdate({layerOverrides:{...config.layerOverrides,[id]:{...previous,locked:!previous.locked}}});
     }
   };
-  return <section aria-label="Orden y gestión de capas" className="border-t border-white/10 shrink-0 flex flex-col min-h-0">
-    <div className="px-4 pt-4 pb-2 flex justify-between items-center">
-      <span className="text-[10px] text-slate-300 uppercase font-bold tracking-[.15em] flex items-center gap-2"><Layers3 size={14}/> Capas del diseño</span>
-      <span className="font-mono text-[10px] text-slate-500">{order.length}</span>
+  return <section aria-label="Orden y gestión de capas" className="border-t border-[#252b37] bg-[#0d1016] shrink-0 flex flex-col min-h-0">
+    <div className="px-3 pt-2.5 pb-1.5 flex justify-between items-center bg-[#151922] border-b border-[#222834]">
+      <span className="atem-label text-slate-200 flex items-center gap-1.5"><Layers3 size={13} className="text-sky-400"/> STACK DE CAPAS</span>
+      <span className="font-mono text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#06080b] border border-[#252b37] text-sky-400">{order.length}</span>
     </div>
-    <div className="px-3 grid grid-cols-3 gap-1.5 pb-3">
-      <button type="button" title="Añadir texto" onClick={()=>add('text')} className="studio-action-mini"><Type size={13}/> Texto</button>
-      <button type="button" title="Añadir forma" onClick={()=>add('shape')} className="studio-action-mini"><Shapes size={13}/> Forma</button>
-      <button type="button" title="Añadir imagen" onClick={()=>add('image')} className="studio-action-mini"><ImagePlus size={13}/> Imagen</button>
+    <div className="px-2.5 pt-2 grid grid-cols-3 gap-1 pb-2">
+      <button type="button" title="Añadir texto" onClick={()=>add('text')} className="atem-btn py-1.5 px-1 text-[10px] font-bold flex items-center justify-center gap-1"><Type size={12} className="text-sky-400"/> Texto</button>
+      <button type="button" title="Añadir forma" onClick={()=>add('shape')} className="atem-btn py-1.5 px-1 text-[10px] font-bold flex items-center justify-center gap-1"><Shapes size={12} className="text-sky-400"/> Forma</button>
+      <button type="button" title="Añadir imagen" onClick={()=>add('image')} className="atem-btn py-1.5 px-1 text-[10px] font-bold flex items-center justify-center gap-1"><ImagePlus size={12} className="text-sky-400"/> Imagen</button>
     </div>
-    <p className="text-[10px] text-slate-500 px-4 pb-2">Arriba = delante. Arrastra o usa las flechas. Elementos originales y nuevos comparten el mismo orden.</p>
-    <div className="px-2 pb-4 overflow-y-auto max-h-[40vh] space-y-1" onDragEnd={()=>setDragged(null)}>
-      <button type="button" onClick={()=>onSelect(null)} className={`w-full flex items-center gap-2 text-left text-xs rounded-lg px-3 py-2 ${selectedId===null?'text-white bg-white/10':'text-slate-400 hover:bg-white/5'}`}>
-        <ChevronRight size={12} className="text-[#FF6B00]"/> <span className="font-semibold truncate">{config.name}</span><span className="text-[9px] opacity-60 ml-auto">GRÁFICA</span>
+    <p className="text-[10px] text-slate-500 px-3 pb-1.5">Arriba = frente en OBS. Arrastra o usa flechas.</p>
+    <div className="px-2 pb-3 overflow-y-auto max-h-[36vh] space-y-1" onDragEnd={()=>setDragged(null)}>
+      <button type="button" onClick={()=>onSelect(null)} className={`w-full flex items-center gap-1.5 text-left text-xs rounded px-2.5 py-1.5 border ${selectedId===null?'text-white bg-[#1a2230] border-sky-400':'text-slate-400 border-transparent hover:bg-white/5'}`}>
+        <ChevronRight size={12} className="text-sky-400"/> <span className="font-bold truncate">{config.name}</span><span className="text-[9px] font-mono opacity-60 ml-auto">MASTER</span>
       </button>
       {[...order].reverse().map((id,index)=>{
         const original=originalById.get(id);
@@ -83,22 +83,22 @@ export const WorkspaceLayerTree:React.FC<Props>=({config,selectedId,selectedIds=
         }} onDragOver={event=>{if(dragged&&dragged!==id){event.preventDefault();event.dataTransfer.dropEffect='move';}}}
         onDrop={event=>{event.preventDefault();drop(id);}}
         className={`studio-layer-row group flex items-center ${selected?'studio-layer-selected':''} ${dragged===id?'opacity-40':''}`}>
-          <GripVertical size={13} className={`shrink-0 ml-1 ${locked?'text-slate-700':'text-slate-500 cursor-grab'}`}/>
-          <button type="button" className="flex-1 min-w-0 text-left pl-1 py-2 flex gap-1.5 items-center" title={title}
+          <GripVertical size={12} className={`shrink-0 ml-1 ${locked?'text-slate-700':'text-slate-500 cursor-grab'}`}/>
+          <button type="button" className="flex-1 min-w-0 text-left pl-1 py-1.5 flex gap-1.5 items-center" title={title}
             onClick={event=>{onSelect(id,event.ctrlKey||event.metaKey||event.shiftKey);onOpenInspector();}}>
-            <Icon size={13} className={custom?'text-sky-300':'text-[#FF6B00]'} />
-            <span className="truncate text-xs">{title}</span>
-            {groupId&&<Group size={11} className="text-orange-300 shrink-0" aria-label="Agrupado"/>}
+            <Icon size={12} className={custom?'text-sky-400':'text-emerald-400'} />
+            <span className="truncate text-xs font-medium">{title}</span>
+            {groupId&&<Group size={11} className="text-sky-300 shrink-0" aria-label="Agrupado"/>}
           </button>
           <button type="button" className={iconClass} title={`Subir ${title} (hacia delante)`} aria-label={`Subir ${title}`}
-            disabled={locked||index===0} onClick={()=>reorder(id,'up')}><ArrowUp size={13}/></button>
+            disabled={locked||index===0} onClick={()=>reorder(id,'up')}><ArrowUp size={12}/></button>
           <button type="button" className={iconClass} title={`Bajar ${title} (hacia atrás)`} aria-label={`Bajar ${title}`}
-            disabled={locked||index===order.length-1} onClick={()=>reorder(id,'down')}><ArrowDown size={13}/></button>
-          <button type="button" className={iconClass} title={hidden?'Mostrar capa':'Ocultar capa'} aria-label={`${hidden?'Mostrar':'Ocultar'} ${title}`} onClick={()=>updateVisibility(id)}>{hidden?<EyeOff size={13}/>:<Eye size={13}/>}</button>
-          <button type="button" className={iconClass} title={locked?'Desbloquear capa':'Bloquear capa'} aria-label={`${locked?'Desbloquear':'Bloquear'} ${title}`} onClick={()=>updateLock(id)}>{locked?<Lock size={13}/>:<LockOpen size={13}/>}</button>
+            disabled={locked||index===order.length-1} onClick={()=>reorder(id,'down')}><ArrowDown size={12}/></button>
+          <button type="button" className={iconClass} title={hidden?'Mostrar capa':'Ocultar capa'} aria-label={`${hidden?'Mostrar':'Ocultar'} ${title}`} onClick={()=>updateVisibility(id)}>{hidden?<EyeOff size={12}/>:<Eye size={12}/>}</button>
+          <button type="button" className={iconClass} title={locked?'Desbloquear capa':'Bloquear capa'} aria-label={`${locked?'Desbloquear':'Bloquear'} ${title}`} onClick={()=>updateLock(id)}>{locked?<Lock size={12}/>:<LockOpen size={12}/>}</button>
         </div>;
       })}
-      {config.layerOrder&&<p className="px-3 py-2 text-[10px] text-emerald-400">Orden unificado activo · compartido con OBS</p>}
+      {config.layerOrder&&<p className="px-2.5 py-1 text-[10px] font-mono text-emerald-400">ORDEN UNIFICADO · SYNC OBS</p>}
     </div>
   </section>;
 };

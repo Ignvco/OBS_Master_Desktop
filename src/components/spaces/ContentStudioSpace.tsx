@@ -780,74 +780,84 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
   };
 
   return (
-    <div className="stdq-studio-shell flex-1 flex overflow-hidden w-full h-[calc(100vh-4rem)] select-none">
+    <div className="stdq-studio-shell flex-1 flex overflow-hidden w-full h-[calc(100vh-3.25rem)] select-none">
       <StudioCommandPalette open={commandOpen} onClose={()=>setCommandOpen(false)} commands={commands}/>
 
       {/* ======================================================== */}
-      {/* 1. LEFT PANEL: COMPONENT LIBRARY & LAYERS                */}
+      {/* 1. LEFT PANEL: ATEM GRAPHIC BANK & LAYER TREE            */}
       {/* ======================================================== */}
-      {!focusMode && <aside aria-label="Biblioteca de componentes y capas" style={{width:panelWidths.left}} className="glass-panel border-r border-white/10 flex flex-col shrink-0 overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#FF6B00]" />
-            <h2 className="text-xs font-bold text-white uppercase tracking-wider">
-              Mis gráficas y plantillas
-            </h2>
+      {!focusMode && <aside aria-label="Biblioteca de componentes y capas" style={{width:panelWidths.left}} className="bg-[#11141a] border-r border-[#252b37] flex flex-col shrink-0 overflow-hidden">
+        <div className="p-3 border-b border-[#252b37] bg-[#151922]">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Layers className="w-3.5 h-3.5 text-sky-400" />
+              <h2 className="atem-label text-white">
+                BANCO DE GRÁFICAS
+              </h2>
+            </div>
+            <span className="text-[10px] font-mono text-slate-400">
+              {Object.keys(components).length} BASE · {Object.keys(customComponents).length} CUSTOM
+            </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">{Object.keys(components).length} plantillas · {Object.keys(customComponents).length} gráficas propias</p>
-          <button type="button" className="w-full rounded-lg mt-3 bg-[#FF6B00]/15 border border-[#FF6B00]/50 px-3 py-2 text-xs font-bold text-orange-200 hover:bg-[#FF6B00]/25" onClick={()=>setCreateOpen(v=>!v)}>
-            + Crear una gráfica
+
+          <button type="button" className="atem-btn w-full mt-2.5 px-3 py-1.5 text-xs font-extrabold text-sky-300 border-sky-400/40 hover:border-sky-400" onClick={()=>setCreateOpen(v=>!v)}>
+            + Nueva Gráfica Independiente
           </button>
-          {createOpen && <form onSubmit={submitNewGraphic} className="mt-3 space-y-2 rounded-xl bg-black/35 p-3 border border-white/10">
-            <label className="block text-[11px] text-slate-300">Nombre de la gráfica</label>
-            <input autoFocus required maxLength={72} className="w-full bg-slate-900 border border-white/15 rounded-lg p-2 text-xs" value={newGraphicName} onChange={e=>setNewGraphicName(e.target.value)} placeholder="Banner — Invitado especial"/>
-            <label className="block text-[11px] text-slate-300">Partir de una plantilla editable</label>
-            <select className="w-full bg-slate-900 border border-white/15 rounded-lg p-2 text-xs" value={newGraphicTemplate} onChange={e=>setNewGraphicTemplate(e.target.value as ComponentType|'blank')}>
-              <option value="blank">Lienzo vacío — empezar desde cero</option>
+
+          {createOpen && <form onSubmit={submitNewGraphic} className="mt-2.5 space-y-2 rounded bg-[#07090c] p-2.5 border border-[#262c38]">
+            <label className="block text-[10px] font-mono uppercase text-slate-400">Nombre del canal gráfico</label>
+            <input autoFocus required maxLength={72} className="w-full glass-input rounded p-1.5 text-xs text-white" value={newGraphicName} onChange={e=>setNewGraphicName(e.target.value)} placeholder="Banner — Invitado especial"/>
+            <label className="block text-[10px] font-mono uppercase text-slate-400">Plantilla base</label>
+            <select className="w-full glass-input rounded p-1.5 text-xs text-white" value={newGraphicTemplate} onChange={e=>setNewGraphicTemplate(e.target.value as ComponentType|'blank')}>
+              <option value="blank">Lienzo vacío — 1920×1080</option>
               {Object.values(components).map(item=><option key={item.type} value={item.type}>{item.name}</option>)}
             </select>
-            <button type="submit" className="w-full rounded-lg bg-[#FF6B00] text-white p-2 text-xs font-bold">Crear y editar</button>
+            <button type="submit" className="atem-btn atem-btn-pvw w-full p-1.5 text-xs font-bold">Crear canal y editar</button>
           </form>}
-          <label className="flex gap-2 items-center rounded-xl border border-white/10 bg-black/25 px-3 py-2 mt-3 text-slate-500 focus-within:border-[#FF6B00]/60">
-            <Search size={14}/><input value={componentSearch} onChange={e=>setComponentSearch(e.target.value)} placeholder="Buscar componente..." aria-label="Buscar componente" className="bg-transparent text-xs text-white placeholder:text-slate-600 flex-1 min-w-0 outline-none"/>
-            {componentSearch&&<button aria-label="Limpiar búsqueda" onClick={()=>setComponentSearch('')} className="text-slate-400">×</button>}
+
+          <label className="flex gap-2 items-center rounded glass-input px-2.5 py-1.5 mt-2 text-slate-400">
+            <Search size={13}/><input value={componentSearch} onChange={e=>setComponentSearch(e.target.value)} placeholder="Filtrar banco gráfico..." aria-label="Buscar componente" className="bg-transparent text-xs text-white placeholder:text-slate-600 flex-1 min-w-0 outline-none font-mono"/>
+            {componentSearch&&<button aria-label="Limpiar búsqueda" onClick={()=>setComponentSearch('')} className="text-slate-400 hover:text-white">×</button>}
           </label>
         </div>
 
-        <div className="p-3 space-y-4 flex-1 min-h-0 overflow-y-auto">
-          <section className="space-y-2" aria-label="Gráficas independientes">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-orange-300 px-2">Mis gráficas ({Object.keys(customComponents).length})</div>
-            {Object.values(customComponents).filter(g=>g.name.toLowerCase().includes(componentSearch.toLowerCase())).map(g=><div key={g.instanceId} className={`flex items-center rounded-xl border ${selectedCustomId===g.instanceId?'border-orange-400/60 bg-orange-400/10':'border-white/10 bg-white/[0.02]'}`}>
-              <button className="p-2.5 text-left text-xs text-white min-w-0 flex-1 truncate" onClick={()=>selectCustom(g.instanceId!)} title={g.name}>{g.name}{g.visibleInOBS?' ●':''}</button>
-              <button type="button" disabled={Boolean(publishedCustomComponents[g.instanceId!])} className="p-2 text-xs text-slate-400 hover:text-rose-300 disabled:opacity-25" title={publishedCustomComponents[g.instanceId!]?'Gráfica publicada: conserva su fuente OBS. Por seguridad no se elimina desde borradores.':'Eliminar borrador sin publicar'} onClick={()=>{if(window.confirm(`¿Eliminar «${g.name}»? Su fuente OBS dejará de funcionar. Esta acción no tiene deshacer.`)){onRemoveCustom(g.instanceId!);if(selectedCustomId===g.instanceId)setSelectedCustomId(null);}}}>×</button>
+        <div className="p-2.5 space-y-3 flex-1 min-h-0 overflow-y-auto">
+          <section className="space-y-1" aria-label="Gráficas independientes">
+            <div className="atem-label text-sky-400 px-1.5">CANALES PROPIOS ({Object.keys(customComponents).length})</div>
+            {Object.values(customComponents).filter(g=>g.name.toLowerCase().includes(componentSearch.toLowerCase())).map(g=><div key={g.instanceId} className={`flex items-center rounded border transition-colors ${selectedCustomId===g.instanceId?'border-sky-400 bg-[#1a2230] shadow-[inset_2px_0_0_#38bdf8]':'border-[#222834] bg-[#0b0e13] hover:border-[#333c4d]'}`}>
+              <button className="px-2.5 py-1.5 text-left text-xs font-semibold text-white min-w-0 flex-1 truncate" onClick={()=>selectCustom(g.instanceId!)} title={g.name}>{g.name}{g.visibleInOBS?' ●':''}</button>
+              <button type="button" disabled={Boolean(publishedCustomComponents[g.instanceId!])} className="px-2 py-1 text-xs text-slate-400 hover:text-red-400 disabled:opacity-25" title={publishedCustomComponents[g.instanceId!]?'Gráfica publicada: conserva su fuente OBS. Por seguridad no se elimina desde borradores.':'Eliminar borrador sin publicar'} onClick={()=>{if(window.confirm(`¿Eliminar «${g.name}»? Su fuente OBS dejará de funcionar. Esta acción no tiene deshacer.`)){onRemoveCustom(g.instanceId!);if(selectedCustomId===g.instanceId)setSelectedCustomId(null);}}}>×</button>
             </div>)}
-            {!Object.keys(customComponents).length&&<p className="text-[11px] text-slate-500 px-2">Crea una gráfica con su propia dirección OBS, sin reemplazar las plantillas.</p>}
+            {!Object.keys(customComponents).length&&<p className="text-[10px] text-slate-500 px-1.5 leading-snug">Crea canales independientes con URL propia para OBS.</p>}
           </section>
-          {categories.map((cat, idx) => ({...cat,types:cat.types.filter(type=>components[type].name.toLocaleLowerCase('es').includes(componentSearch.toLocaleLowerCase('es')) || type.includes(componentSearch.toLowerCase()))})).filter(cat=>cat.types.length).map((cat, idx) => (
-            <div key={idx} className="space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block">
+
+          {categories.map((cat) => ({...cat,types:cat.types.filter(type=>components[type].name.toLocaleLowerCase('es').includes(componentSearch.toLocaleLowerCase('es')) || type.includes(componentSearch.toLowerCase()))})).filter(cat=>cat.types.length).map((cat, idx) => (
+            <div key={idx} className="space-y-1">
+              <span className="atem-label px-1.5 block">
                 {cat.name}
               </span>
               <div className="space-y-1">
                 {cat.types.map((type) => {
                   const comp = components[type];
                   const isSelected = selectedType === type && !selectedCustomId;
-                  const isLive = comp?.visibleInOBS;
+                  const isLive = publishedComponents[type]?.visibleInOBS;
 
                   return (
                     <button
                       key={type}
                       onClick={() => selectTemplate(type)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs font-semibold transition-all ${
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-left text-xs font-bold transition-all border ${
                         isSelected
-                          ? 'bg-[#FF6B00]/15 text-white border border-[#FF6B00]/40 shadow-sm'
-                          : 'text-slate-400 hover:text-white hover:bg-white/[0.03] border border-transparent'
+                          ? 'bg-[#1a2230] text-white border-sky-400 shadow-[inset_2px_0_0_#38bdf8]'
+                          : 'bg-[#0b0e13] text-slate-300 hover:text-white hover:border-[#333c4d] border-[#1f2532]'
                       }`}
                     >
                       <span className="truncate">{comp.name}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isLive && (
-                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Al aire en OBS" />
+                          <span className="px-1.5 py-0.2 rounded bg-red-600 text-white font-mono text-[9px] font-black" title="Al aire en OBS">
+                            AIR
+                          </span>
                         )}
                       </div>
                     </button>
@@ -857,20 +867,20 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
             </div>
           ))}
         </div>
-        {assetDrawer && <section className="border-t border-white/10 px-3 py-3 max-h-[35vh] overflow-y-auto" aria-label="Recursos gráficos de Biblioteca">
+        {assetDrawer && <section className="border-t border-[#252b37] bg-[#0b0e13] px-3 py-2.5 max-h-[32vh] overflow-y-auto" aria-label="Recursos gráficos de Biblioteca">
           <div className="flex items-center justify-between mb-2">
-            <strong className="text-[10px] uppercase text-slate-300 tracking-widest">Imágenes de Biblioteca</strong>
-            <button onClick={()=>void refreshStudioAssets()} disabled={assetLibraryLoading} className="text-[10px] text-orange-300 hover:text-white">Actualizar</button>
+            <strong className="atem-label text-slate-300">MEDIA POOL · IMÁGENES</strong>
+            <button onClick={()=>void refreshStudioAssets()} disabled={assetLibraryLoading} className="text-[10px] font-mono text-sky-400 hover:text-white">Actualizar</button>
           </div>
           {assetLibraryLoading && <p className="text-[11px] text-slate-400">Cargando recursos…</p>}
           {!assetLibraryLoading && !studioAssets.length && <p className="text-[11px] text-slate-400">No hay imágenes todavía. Usa «Imagen» o arrastra un archivo PNG/JPG/WebP al lienzo.</p>}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {studioAssets.map(asset=><button key={asset.id} draggable title={`Agregar ${asset.name} al lienzo`}
               onDragStart={e=>e.dataTransfer.setData('application/x-stdq-media',asset.id)}
               onClick={()=>addAssetToCanvas(asset.url,asset.name)}
-              className="rounded-lg border border-white/10 bg-black/30 p-1.5 hover:border-orange-400/60 flex flex-col gap-1 text-left overflow-hidden">
-              <img src={asset.thumbnailUrl||asset.url} alt="" loading="lazy" className="w-full h-16 object-contain rounded bg-[#101116]"/>
-              <span className="text-[10px] text-slate-300 truncate w-full">{asset.name}</span>
+              className="rounded border border-[#252b37] bg-[#06080b] p-1.5 hover:border-sky-400 flex flex-col gap-1 text-left overflow-hidden">
+              <img src={asset.thumbnailUrl||asset.url} alt="" loading="lazy" className="w-full h-14 object-contain rounded studio-checkerboard"/>
+              <span className="text-[10px] font-mono text-slate-300 truncate w-full">{asset.name}</span>
             </button>)}
           </div>
         </section>}
@@ -883,172 +893,172 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
       {/* ======================================================== */}
       {/* 2. CENTER PANEL: 16:9 HIGH-DPI CANVAS & CONTROLS         */}
       {/* ======================================================== */}
-      <main aria-label="Lienzo de diseño y previsualización" className="flex-1 flex flex-col overflow-hidden bg-[#07080A]">
-        {/* Canvas Toolbar */}
+      <main aria-label="Lienzo de diseño y previsualización" className="flex-1 flex flex-col overflow-hidden bg-[#07090c]">
+        {/* Consolidated Broadcast Studio Topbar */}
         <div className="studio-topbar shrink-0" aria-label="Estado y publicación del estudio">
           <div className="studio-topbar-primary">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="studio-app-mark"><Sparkles size={15}/></div>
-              <div className="min-w-0"><div className="studio-eyebrow">DISEÑAR <span className="mx-1.5 opacity-40">/</span> CONTENT STUDIO V4.2</div>
-                <div className="text-sm font-semibold text-white truncate" title={selectedConfig.name}>{selectedConfig.name}</div></div>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="studio-app-mark"><Sparkles size={14}/></div>
+              <div className="min-w-0">
+                <div className="studio-eyebrow">GRAPHIC STUDIO <span className="mx-1 opacity-40">/</span> COMPOSICIÓN 16:9</div>
+                <div className="text-xs font-black text-white truncate font-mono" title={selectedConfig.name}>{selectedConfig.name}</div>
+              </div>
               {selectedCustomId && <button type="button" className="studio-subtle-action" onClick={()=>{
                 const name=window.prompt('Nombre de esta gráfica independiente',selectedConfig.name);
                 if(name?.trim())handleUpdate({name:name.trim().slice(0,72)});
               }}>Renombrar</button>}
-              <span className="hidden 2xl:inline studio-resolution-label">1920 × 1080</span>
+              <span className="hidden 2xl:inline studio-resolution-label">1920 × 1080 HD</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <div role="status" aria-live="polite" className={`studio-save-pill studio-save-${saveStatus}`}>
                 <span className="studio-status-dot"/>
-                <span>{saveStatus==='saved'?'Borrador guardado':saveStatus==='saving'?'Guardando borrador…':'Error de guardado'}</span>
+                <span>{saveStatus==='saved'?'BORRADOR OK':saveStatus==='saving'?'GUARDANDO…':'ERROR GUARDADO'}</span>
                 {saveStatus==='error'&&<button type="button" onClick={onRetrySave} className="underline ml-1">Reintentar</button>}
               </div>
               <button type="button" className="studio-command-button" onClick={()=>setCommandOpen(true)} title="Acciones del editor (Ctrl+K)">
-                <Command size={14}/> Acciones <kbd>Ctrl K</kbd>
+                <Command size={13}/> Comandos <kbd>Ctrl K</kbd>
               </button>
             </div>
           </div>
+
           <div className="studio-topbar-publish">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="studio-stage-label">BORRADOR → PUBLICACIÓN</span>
-              <span className={`studio-version-pill ${publishedSelected?.visibleInOBS?'studio-version-live':''}`}>{publishedSelected?.visibleInOBS?'● Marcada visible':publishedSelected?'● Publicada':'Nunca publicada'}</span>
-              <span className={`studio-change-pill ${draftDifferent?'studio-change-pending':'studio-change-synced'}`}>{draftDifferent?'● Cambios pendientes':'✓ Sin cambios'}</span>
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <span className="studio-stage-label">FLUJO EDITORIAL:</span>
+              <span className={`studio-version-pill ${publishedSelected?.visibleInOBS?'studio-version-live':''}`}>{publishedSelected?.visibleInOBS?'● ON AIR EN OBS':publishedSelected?'● PUBLICADA':'SIN PUBLICAR'}</span>
+              <span className={`studio-change-pill ${draftDifferent?'studio-change-pending':'studio-change-synced'}`}>{draftDifferent?'● CAMBIOS EN BORRADOR':'✓ SINCRONIZADA'}</span>
+              <div className="ux-publication-explainer !py-0.5 !px-2 !bg-transparent !border-0 text-[10px] text-slate-400" role="note">
+                <ShieldCheck size={12} className="text-emerald-400 shrink-0"/> Publicar actualiza el diseño para OBS; <strong>no muestra la gráfica al aire.</strong>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="studio-view-toggle" role="group" aria-label="Comparación de diseños">
                 <button type="button" aria-pressed={!comparePublished} onClick={()=>{setComparePublished(false);setPreviewOnly(false);}} className={!comparePublished?'active':''}>Borrador</button>
                 <button type="button" disabled={!publishedSelected} aria-pressed={comparePublished}
                   onClick={()=>{setComparePublished(true);setPreviewOnly(true);selectIds([]);}} className={comparePublished?'active':''}>Publicado</button>
               </div>
               <details className="ux-history-details">
-              <summary className="studio-secondary-cta cursor-pointer">Versiones e historial</summary>
-              <div className="ux-history-controls">
-              <select aria-label="Versiones anteriores" value={historySelection} onChange={event=>setHistorySelection(event.target.value===''?'':Number(event.target.value))}
-                className="studio-history-select"><option value="">Historial…</option>
-                {(timeline?.revisions??[]).slice().reverse().map(r=><option key={r.version} value={r.version}>v{r.version} · {r.pinned?'🔒 ':''}{r.label||`Guardada ${r.publishedAt.slice(0,10)}`}</option>)}</select>
-              <button type="button" disabled={publicationBusy||saveStatus!=='saved'} className="studio-secondary-cta" onClick={()=>void manageHistory('save')}>+ Guardar versión</button>
-              <button type="button" disabled={publicationBusy||historySelection===''} className="studio-secondary-cta" onClick={()=>void manageHistory('restore-draft')}>Recuperar borrador</button>
-              <button type="button" disabled={publicationBusy||historySelection===''} className="studio-history-more" onClick={()=>setHistoryActionsOpen(v=>!v)} aria-expanded={historyActionsOpen}>Gestionar</button>
-              {historyActionsOpen && <div className="studio-history-management ux-history-management" role="group" aria-label="Gestionar historial">
-                <span>Solo «Guardar versión» genera revisiones. Publicar y recuperar no crean copias.</span>
-                <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('rename')}>Renombrar</button>
-                <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('pin')}>{timeline?.revisions.find(r=>r.version===historySelection)?.pinned?'Desproteger':'Proteger'}</button>
-                <button type="button" disabled={publicationBusy||historySelection===''||Boolean(timeline?.revisions.find(r=>r.version===historySelection)?.pinned)} onClick={()=>void manageHistory('remove')}>Eliminar</button>
-              </div>}
-              </div>
+                <summary className="studio-secondary-cta cursor-pointer">Versiones e historial</summary>
+                <div className="ux-history-controls">
+                  <select aria-label="Versiones anteriores" value={historySelection} onChange={event=>setHistorySelection(event.target.value===''?'':Number(event.target.value))}
+                    className="studio-history-select"><option value="">Historial…</option>
+                    {(timeline?.revisions??[]).slice().reverse().map(r=><option key={r.version} value={r.version}>v{r.version} · {r.pinned?'🔒 ':''}{r.label||`Guardada ${r.publishedAt.slice(0,10)}`}</option>)}</select>
+                  <button type="button" disabled={publicationBusy||saveStatus!=='saved'} className="studio-secondary-cta" onClick={()=>void manageHistory('save')}>+ Guardar versión</button>
+                  <button type="button" disabled={publicationBusy||historySelection===''} className="studio-secondary-cta" onClick={()=>void manageHistory('restore-draft')}>Recuperar borrador</button>
+                  <button type="button" disabled={publicationBusy||historySelection===''} className="studio-history-more" onClick={()=>setHistoryActionsOpen(v=>!v)} aria-expanded={historyActionsOpen}>Gestionar</button>
+                  {historyActionsOpen && <div className="studio-history-management ux-history-management" role="group" aria-label="Gestionar historial">
+                    <span>Solo «Guardar versión» genera revisiones. Publicar y recuperar no crean copias.</span>
+                    <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('rename')}>Renombrar</button>
+                    <button type="button" disabled={publicationBusy||historySelection===''} onClick={()=>void manageHistory('pin')}>{timeline?.revisions.find(r=>r.version===historySelection)?.pinned?'Desproteger':'Proteger'}</button>
+                    <button type="button" disabled={publicationBusy||historySelection===''||Boolean(timeline?.revisions.find(r=>r.version===historySelection)?.pinned)} onClick={()=>void manageHistory('remove')}>Eliminar</button>
+                  </div>}
+                </div>
               </details>
               <button type="button" disabled={publicationBusy||saveStatus==='saving'||saveStatus==='error'||!draftDifferent||Boolean(publishedSelected?.visibleInOBS)}
                 title={publishedSelected?.visibleInOBS?'Oculta la gráfica desde En Vivo antes de publicar':saveStatus==='error'?'Soluciona primero el guardado del borrador':'Publicación explícita, con confirmación'}
                 className="studio-publish-cta" onClick={()=>void publishSelected()}><ShieldCheck size={14}/> {publicationBusy?'Publicando…':'Publicar diseño'}</button>
-            </div>
-          </div>
-          <div className="ux-publication-explainer" role="note"><ShieldCheck size={13}/> Publicar actualiza el diseño utilizado por OBS; <strong>no muestra la gráfica al aire.</strong> Para operarla, abre En Vivo.</div>
-
-          {publicationMessage&&<p role="alert" className="px-5 py-1.5 text-[11px] text-rose-300 bg-rose-500/10">{publicationMessage}</p>}
-          {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> MARCADA VISIBLE EN OBS: puedes seguir editando y recuperar versiones solo al borrador. Oculta esta gráfica desde En Vivo antes de publicar. Verifica la señal real en OBS.</div>}
-        </div>
-        <div className="studio-view-controls shrink-0">
-          {/* Settings for the canvas; do not compete with its main editing tools. */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button type="button" aria-expanded={showCanvasOptions} title="Mostrar u ocultar las opciones visuales del lienzo; no afectan OBS"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/15 bg-white/5 text-xs font-semibold text-slate-200 hover:bg-white/10"
-              onClick={()=>setShowCanvasOptions(v=>!v)}>
-              {showCanvasOptions?'Ocultar guías y fondo':'Guías y fondo'} <ChevronDown size={13} className={showCanvasOptions?'rotate-180':''}/>
-            </button>
-            {showCanvasOptions && <>
-            <button
-              onClick={() => setShowSafeZones(!showSafeZones)}
-              className={`px-2.5 py-1 text-xs rounded-lg font-medium border transition-colors ${
-                showSafeZones
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'text-slate-500 border-transparent hover:text-slate-300'
-              }`}
-              title="Zonas seguras de televisión (Action 90% / Title 80%)"
-            >
-              Safe Zones
-            </button>
-
-            <button
-              onClick={() => setShowGrid(!showGrid)}
-              className={`p-1.5 text-xs rounded-lg font-medium border transition-colors ${
-                showGrid
-                  ? 'bg-white/10 text-white border-white/20'
-                  : 'text-slate-500 border-transparent hover:text-slate-300'
-              }`}
-              title="Cuadrícula guía de 120 píxeles de diseño"
-              aria-label="Alternar cuadrícula guía"
-            >
-              <Grid className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Canvas Background selector */}
-            <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10 text-xs">
-              <button
-                onClick={() => setCanvasBg('dark')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium ${canvasBg === 'dark' ? 'bg-white/15 text-white' : 'text-slate-400'}`}
-              >
-                Estudio
-              </button>
-              <button
-                onClick={() => setCanvasBg('camera')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium ${canvasBg === 'camera' ? 'bg-white/15 text-white' : 'text-slate-400'}`}
-              >
-                Simulación
-              </button>
-              <button
-                onClick={() => setCanvasBg('transparent')}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium ${canvasBg === 'transparent' ? 'bg-white/15 text-white' : 'text-slate-400'}`}
-              >
-                OBS Alpha
+              <button type="button" onClick={()=>onGoLive(selectionKey)}
+                title="Abrir la mesa En Vivo para mostrar u ocultar gráficas en OBS"
+                className="studio-secondary-cta flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 text-red-400" /> Gestionar en En Vivo →
               </button>
             </div>
-
-            <div className="h-4 w-px bg-white/10 mx-1" />
-
-            </>}
-            {/* Editorial handoff: live visibility is controlled in the realization workspace. */}
-            <button type="button" onClick={()=>onGoLive(selectionKey)}
-              title="Abrir la mesa En Vivo para mostrar u ocultar gráficas en OBS"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-white/15 bg-white/5 text-slate-200 hover:bg-white/10">
-              <Radio className="w-3.5 h-3.5" /> Gestionar en En Vivo →
-            </button>
           </div>
+
+          {publicationMessage&&<p role="alert" className="px-4 py-1 text-[11px] font-mono text-red-300 bg-red-950/40 border-t border-red-500/30">{publicationMessage}</p>}
+          {publishedSelected?.visibleInOBS&&<div role="status" className="studio-air-notice"><Radio size={13}/> CANAL EN AIRE EN OBS: puedes editar el borrador libremente. Oculta esta gráfica en «En Vivo» antes de publicar cambios.</div>}
         </div>
 
-        <div className="min-h-11 px-4 py-1 shrink-0 border-b border-white/10 flex items-center justify-between gap-2 bg-[#0d0e13] flex-wrap">
-          <div className="flex items-center gap-1 text-slate-400 text-[11px]">
-            <button onClick={()=>setTool('select')} aria-pressed={tool==='select'} title="Seleccionar (V)" className={`studio-tool ${tool==='select'?'studio-tool-active':''}`}><MousePointer2 size={15}/> Seleccionar <kbd className="text-[9px] opacity-50">V</kbd></button>
-            <button onClick={()=>setTool('hand')} aria-pressed={tool==='hand'} title="Mover vista (H) · Espacio + arrastrar" className={`studio-tool ${tool==='hand'?'studio-tool-active':''}`}><Hand size={15}/> Mano <kbd className="text-[9px] opacity-50">H</kbd></button>
-            <span className="h-5 w-px bg-white/10 mx-1"/>
-            <button className="studio-tool" onClick={()=>centerObject('x')} title="Centrar en horizontal" disabled={Boolean(selectedLayerId && !selectedConfig.layers?.some(x=>x.id===selectedLayerId))}><AlignHorizontalJustifyCenter size={15}/></button>
-            <button className="studio-tool" onClick={()=>centerObject('y')} title="Centrar en vertical" disabled={Boolean(selectedLayerId && !selectedConfig.layers?.some(x=>x.id===selectedLayerId))}><AlignVerticalJustifyCenter size={15}/></button>
-          </div>
-          <div className="flex gap-1 items-center shrink-0">
-            <button onClick={toggleAssetDrawer} aria-pressed={assetDrawer} className={`studio-tool ${assetDrawer?'studio-tool-active':''}`} title="Abrir imágenes de Biblioteca"><Layers size={14}/> Recursos</button>
+        {/* Unified Canvas & Reference Monitor Toolbar */}
+        <div className="studio-view-controls !justify-between shrink-0">
+          <div className="flex items-center gap-1 text-slate-400 text-[11px] flex-wrap">
+            <button onClick={()=>setTool('select')} aria-pressed={tool==='select'} title="Seleccionar (V)" className={`studio-tool ${tool==='select'?'studio-tool-active':''}`}><MousePointer2 size={14}/> Seleccionar <kbd className="text-[9px] opacity-50">V</kbd></button>
+            <button onClick={()=>setTool('hand')} aria-pressed={tool==='hand'} title="Mover vista (H) · Espacio + arrastrar" className={`studio-tool ${tool==='hand'?'studio-tool-active':''}`}><Hand size={14}/> Mano <kbd className="text-[9px] opacity-50">H</kbd></button>
+            <span className="h-4 w-px bg-[#252b37] mx-0.5"/>
+            <button className="studio-tool" onClick={()=>centerObject('x')} title="Centrar en horizontal" disabled={Boolean(selectedLayerId && !selectedConfig.layers?.some(x=>x.id===selectedLayerId))}><AlignHorizontalJustifyCenter size={14}/></button>
+            <button className="studio-tool" onClick={()=>centerObject('y')} title="Centrar en vertical" disabled={Boolean(selectedLayerId && !selectedConfig.layers?.some(x=>x.id===selectedLayerId))}><AlignVerticalJustifyCenter size={14}/></button>
+            <span className="h-4 w-px bg-[#252b37] mx-0.5"/>
+            <button onClick={toggleAssetDrawer} aria-pressed={assetDrawer} className={`studio-tool ${assetDrawer?'studio-tool-active':''}`} title="Abrir imágenes de Biblioteca"><Layers size={13}/> Media Pool</button>
             <label title="Importar imagen a Biblioteca y composición" className={`studio-tool cursor-pointer ${assetBusy||comparePublished?'opacity-40 pointer-events-none':''}`}>
-              <ImagePlus size={14}/> Imagen
+              <ImagePlus size={13}/> Importar
               <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={assetBusy||comparePublished} onChange={e=>{void importImage(e.target.files?.[0]);e.currentTarget.value='';}}/>
             </label>
-            <span className="text-[10px] text-slate-500 hidden 2xl:inline">Arrastra recursos al lienzo</span>
           </div>
-          <div className="flex gap-1 items-center border-l border-white/10 pl-2" aria-label="Historial del componente">
-            <button disabled={!flags.canUndo} onClick={()=>stepEdit(-1)} title="Deshacer (Ctrl+Z)" aria-label="Deshacer"
-              className="p-1.5 rounded-lg text-slate-200 hover:bg-white/10 disabled:opacity-30"><Undo2 size={16}/></button>
-            <button disabled={!flags.canRedo} onClick={()=>stepEdit(1)} title="Rehacer (Ctrl+Y / Ctrl+Shift+Z)" aria-label="Rehacer"
-              className="p-1.5 rounded-lg text-slate-200 hover:bg-white/10 disabled:opacity-30"><Redo2 size={16}/></button>
-            <button onClick={()=>setSnapEnabled(v=>!v)} title="Imán: ajuste inteligente al mover" aria-pressed={snapEnabled}
-              className={`p-1.5 rounded-lg ${snapEnabled?'text-[#FF6B00] bg-[#FF6B00]/15':'text-slate-500 hover:bg-white/10'}`}><Magnet size={16}/></button>
-            <button onClick={()=>playPreview(true)} title="Reproducir entrada, permanencia y salida (sin emitir en OBS)"
-              className="p-1.5 rounded-lg text-slate-200 hover:bg-white/10 flex gap-1 items-center"><PlayCircle size={16}/><span className="text-[10px]">Motion</span></button>
-            <span className="h-5 w-px bg-white/10 mx-1"/>
-            <button onClick={()=>setShowRulers(v=>!v)} title="Reglas en píxeles" aria-pressed={showRulers} className={`studio-tool ${showRulers?'studio-tool-active':''}`}><Ruler size={14}/></button>
-            <button onClick={()=>{if(!comparePublished)setPreviewOnly(v=>!v);}} disabled={comparePublished} title="Vista limpia: ocultar controles de edición" aria-pressed={previewOnly} className={`studio-tool ${previewOnly?'studio-tool-active':''}`}><MonitorPlay size={14}/></button>
-            <button onClick={()=>setFocusMode(v=>!v)} title="Ampliar lienzo (ocultar paneles)" aria-pressed={focusMode} className={`studio-tool ${focusMode?'studio-tool-active':''}`}><Focus size={14}/></button>
-            <span className="h-5 w-px bg-white/10 mx-1"/>
-            <button onClick={()=>zoomBy(-25)} className="studio-tool" title="Reducir zoom (-)"><Minus size={14}/></button>
-            <span className="text-[11px] min-w-11 text-center font-mono text-white">{zoom}%</span>
-            <button onClick={()=>zoomBy(25)} className="studio-tool" title="Aumentar zoom (+)"><Plus size={14}/></button>
-            <button onClick={resetView} className="studio-tool" title="Ajustar lienzo y centrar (0)"><Scan size={14}/> Ajustar</button>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button type="button" aria-expanded={showCanvasOptions} title="Mostrar u ocultar las opciones visuales del lienzo; no afectan OBS"
+              className="studio-subtle-action flex items-center gap-1 text-[11px]"
+              onClick={()=>setShowCanvasOptions(v=>!v)}>
+              {showCanvasOptions?'Ocultar guías':'Guías / Fondo'} <ChevronDown size={12} className={showCanvasOptions?'rotate-180':''}/>
+            </button>
+            {showCanvasOptions && <>
+              <button
+                onClick={() => setShowSafeZones(!showSafeZones)}
+                className={`px-2 py-1 text-[10px] font-mono rounded border transition-colors ${
+                  showSafeZones
+                    ? 'bg-sky-950/60 text-sky-300 border-sky-400/50'
+                    : 'text-slate-400 border-[#252b37] hover:text-white'
+                }`}
+                title="Zonas seguras de televisión (Action 90% / Title 80%)"
+              >
+                SAFE ZONES
+              </button>
+
+              <button
+                onClick={() => setShowGrid(!showGrid)}
+                className={`p-1 text-xs rounded border transition-colors ${
+                  showGrid
+                    ? 'bg-sky-950/60 text-sky-300 border-sky-400/50'
+                    : 'text-slate-400 border-[#252b37] hover:text-white'
+                }`}
+                title="Cuadrícula guía de 120 píxeles de diseño"
+                aria-label="Alternar cuadrícula guía"
+              >
+                <Grid className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="atem-well !p-0.5 flex items-center text-[10px] font-mono">
+                <button
+                  onClick={() => setCanvasBg('dark')}
+                  className={`px-2 py-0.5 rounded-[3px] font-bold ${canvasBg === 'dark' ? 'bg-[#232a38] text-white' : 'text-slate-400'}`}
+                >
+                  CHASSIS
+                </button>
+                <button
+                  onClick={() => setCanvasBg('camera')}
+                  className={`px-2 py-0.5 rounded-[3px] font-bold ${canvasBg === 'camera' ? 'bg-[#232a38] text-white' : 'text-slate-400'}`}
+                >
+                  CAM SIM
+                </button>
+                <button
+                  onClick={() => setCanvasBg('transparent')}
+                  className={`px-2 py-0.5 rounded-[3px] font-bold ${canvasBg === 'transparent' ? 'bg-[#232a38] text-white' : 'text-slate-400'}`}
+                >
+                  ALPHA
+                </button>
+              </div>
+            </>}
+
+            <span className="h-4 w-px bg-[#252b37] mx-0.5"/>
+            <div className="flex gap-0.5 items-center" aria-label="Historial del componente">
+              <button disabled={!flags.canUndo} onClick={()=>stepEdit(-1)} title="Deshacer (Ctrl+Z)" aria-label="Deshacer"
+                className="p-1 rounded text-slate-200 hover:bg-white/10 disabled:opacity-30"><Undo2 size={14}/></button>
+              <button disabled={!flags.canRedo} onClick={()=>stepEdit(1)} title="Rehacer (Ctrl+Y / Ctrl+Shift+Z)" aria-label="Rehacer"
+                className="p-1 rounded text-slate-200 hover:bg-white/10 disabled:opacity-30"><Redo2 size={14}/></button>
+              <button onClick={()=>setSnapEnabled(v=>!v)} title="Imán: ajuste inteligente al mover" aria-pressed={snapEnabled}
+                className={`p-1 rounded ${snapEnabled?'text-sky-400 bg-sky-500/15':'text-slate-500 hover:bg-white/10'}`}><Magnet size={14}/></button>
+              <button onClick={()=>playPreview(true)} title="Reproducir entrada, permanencia y salida (sin emitir en OBS)"
+                className="px-2 py-1 rounded bg-[#1b2029] border border-[#2c3444] text-slate-200 hover:border-sky-400 flex gap-1 items-center text-[10px] font-mono font-bold"><PlayCircle size={13} className="text-sky-400"/><span>TEST MOTION</span></button>
+              <button onClick={()=>setShowRulers(v=>!v)} title="Reglas en píxeles" aria-pressed={showRulers} className={`studio-tool ${showRulers?'studio-tool-active':''}`}><Ruler size={13}/></button>
+              <button onClick={()=>{if(!comparePublished)setPreviewOnly(v=>!v);}} disabled={comparePublished} title="Vista limpia: ocultar controles de edición" aria-pressed={previewOnly} className={`studio-tool ${previewOnly?'studio-tool-active':''}`}><MonitorPlay size={13}/></button>
+              <button onClick={()=>setFocusMode(v=>!v)} title="Ampliar lienzo (ocultar paneles)" aria-pressed={focusMode} className={`studio-tool ${focusMode?'studio-tool-active':''}`}><Focus size={13}/></button>
+              <span className="h-4 w-px bg-[#252b37] mx-0.5"/>
+              <button onClick={()=>zoomBy(-25)} className="studio-tool" title="Reducir zoom (-)"><Minus size={13}/></button>
+              <span className="text-[10px] min-w-10 text-center font-mono font-bold text-white">{zoom}%</span>
+              <button onClick={()=>zoomBy(25)} className="studio-tool" title="Aumentar zoom (+)"><Plus size={13}/></button>
+              <button onClick={resetView} className="studio-tool" title="Ajustar lienzo y centrar (0)"><Scan size={13}/> Fit</button>
+            </div>
           </div>
         </div>
 
@@ -1251,49 +1261,49 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
         </div>
 
         {/* Bottom Bar: Browser Source URL & OBS Integration */}
-        <div className="p-3 px-5 glass-panel border-t border-white/10 flex items-center justify-between gap-2 text-xs text-slate-300">
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">URL Fuente OBS:</span>
-            <code className="px-2.5 py-1 rounded bg-black/60 border border-white/10 font-mono text-sky-400 text-[11px]">
+        <div className="px-4 py-2 bg-[#0d1016] border-t border-[#252b37] flex items-center justify-between gap-2 text-xs text-slate-300 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="atem-label text-slate-400 shrink-0">URL BROWSER SOURCE:</span>
+            <code className="px-2.5 py-0.5 atem-readout text-sky-400 text-[11px] truncate max-w-[440px]">
               {overlayUrl}
             </code>
             <button
               onClick={copyOverlayUrl}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-white transition-colors"
+              className="atem-btn flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white shrink-0"
             >
               {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               <span>{copiedUrl ? '¡Copiado!' : 'Copiar URL'}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-400 text-xs">
-            <span className="hidden 2xl:inline">V Seleccionar · H Mano · Espacio mover · +/- Zoom</span>
-            <span>Resolución sugerida: <strong>1920 × 1080</strong></span>
-            <span>Fondo: <strong>Transparente</strong></span>
+          <div className="flex items-center gap-3 text-slate-400 text-[11px] font-mono shrink-0">
+            <span className="hidden 2xl:inline">V Select · H Pan · Space Drag · +/- Zoom</span>
+            <span>CANVAS: <strong className="text-white">1920×1080</strong></span>
+            <span>ALPHA: <strong className="text-emerald-400">TRANSPARENTE</strong></span>
           </div>
         </div>
       </main>
 
       {/* ======================================================== */}
-      {/* 3. RIGHT PANEL: CONTEXTUAL INSPECTOR (5 TABS)            */}
+      {/* 3. RIGHT PANEL: ATEM CONTEXTUAL INSPECTOR PALETTES       */}
       {/* ======================================================== */}
       {!focusMode && <div role="separator" aria-orientation="vertical" aria-label="Ajustar ancho inspector" title="Arrastra para cambiar el ancho del Inspector" className="studio-panel-divider"
         onPointerDown={e=>beginPanelDrag(e,'right')} onPointerMove={movePanelDrag} onPointerUp={endPanelDrag} onPointerCancel={endPanelDrag}/>}
-      {!focusMode && <aside aria-label="Inspector de propiedades" style={{width:panelWidths.right}} className="glass-panel studio-inspector-shell border-l border-white/10 flex flex-col shrink-0 min-w-0 overflow-y-auto overflow-x-hidden">
+      {!focusMode && <aside aria-label="Inspector de propiedades" style={{width:panelWidths.right}} className="glass-panel studio-inspector-shell border-l border-[#252b37] flex flex-col shrink-0 min-w-0 overflow-y-auto overflow-x-hidden">
         {/* Inspector Tab Bar */}
         <div className="studio-inspector-header" aria-label="Herramientas de edición">
-          <div className="studio-inspector-heading"><span>HERRAMIENTAS</span><span className="studio-inspector-hint">Selecciona un panel</span></div>
+          <div className="studio-inspector-heading"><span>PALETAS DE INSPECCIÓN</span><span className="studio-inspector-hint font-mono">M/E GRAPHIC</span></div>
           <div className="studio-inspector-tabs" role="group" aria-label="Herramientas esenciales">
             {([
               { id:'smart', label:'Rápido', icon:'◉' },
-              { id:'content', label:'Contenido', icon:'📝' },
-              { id:'layers', label:'Capas', icon:'▧' },
-              { id:'animation', label:'Animar', icon:'⚡' },
+              { id:'content', label:'Contenido', icon:'≡' },
+              { id:'layers', label:'Capas', icon:'◫' },
+              { id:'animation', label:'Motion', icon:'▸' },
             ] as const).map(tab => (
               <button key={tab.id} type="button" onClick={()=>setActiveInspectorTab(tab.id)}
                 aria-pressed={activeInspectorTab===tab.id}
                 className={`studio-inspector-tab ${activeInspectorTab===tab.id?'bg-white/15 text-white shadow-sm border border-white/10':'text-slate-400 hover:text-white hover:bg-white/[0.03]'}`}>
-                <span aria-hidden="true">{tab.icon}</span><span>{tab.label}</span>
+                <span aria-hidden="true" className="font-mono font-bold">{tab.icon}</span><span>{tab.label}</span>
               </button>
             ))}
           </div>
@@ -1302,18 +1312,18 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
               if(showAdvancedInspector && ['design','geometry','branding','broadcast'].includes(activeInspectorTab)) setActiveInspectorTab('smart');
               setShowAdvancedInspector(v=>!v);
             }}>
-            Más herramientas: texto, forma, logo y OBS <ChevronDown size={13} className={showAdvancedInspector?'rotate-180':''}/>
+            Paletas avanzadas: Tipografía, Geometría, Marca y OBS <ChevronDown size={13} className={showAdvancedInspector?'rotate-180':''}/>
           </button>
           {showAdvancedInspector && <div className="studio-inspector-tabs ux-advanced-tabs" role="group" aria-label="Herramientas avanzadas">
             {([
-              { id:'design', label:'Texto', icon:'🔤' },
-              { id:'geometry', label:'Forma', icon:'📐' },
+              { id:'design', label:'Texto', icon:'Aa' },
+              { id:'geometry', label:'Forma', icon:'⊞' },
               { id:'branding', label:'Logo', icon:'◈' },
-              { id:'broadcast', label:'OBS', icon:'📡' },
+              { id:'broadcast', label:'OBS', icon:'◎' },
             ] as const).map(tab=>(
               <button type="button" key={tab.id} onClick={()=>setActiveInspectorTab(tab.id)} aria-pressed={activeInspectorTab===tab.id}
                 className={`studio-inspector-tab ${activeInspectorTab===tab.id?'bg-white/15 text-white shadow-sm border border-white/10':'text-slate-400 hover:text-white hover:bg-white/[0.03]'}`}>
-                <span aria-hidden="true">{tab.icon}</span><span>{tab.label}</span>
+                <span aria-hidden="true" className="font-mono font-bold">{tab.icon}</span><span>{tab.label}</span>
               </button>
             ))}
           </div>}
@@ -1321,14 +1331,14 @@ export const ContentStudioSpace: React.FC<ContentStudioSpaceProps> = ({
 
         {/* Inspector Body */}
         {comparePublished&&<div className="studio-readonly-indicator"><ShieldCheck size={14}/> Vista publicada · inspector bloqueado <button type="button" onClick={()=>{setComparePublished(false);setPreviewOnly(false);}}>Volver a editar</button></div>}
-        {comparePublished && publishedSelected && <div className="p-5 space-y-3 text-xs text-slate-300" role="status">
-          <p className="text-[10px] tracking-[.16em] uppercase text-orange-300 font-bold">Snapshot publicado</p>
-          <h3 className="font-semibold text-white text-base">{publishedSelected.name}</h3>
+        {comparePublished && publishedSelected && <div className="p-4 space-y-3 text-xs text-slate-300" role="status">
+          <p className="text-[10px] tracking-[.16em] uppercase text-emerald-400 font-mono font-bold">SNAPSHOT PUBLICADO</p>
+          <h3 className="font-bold text-white text-sm font-mono">{publishedSelected.name}</h3>
           <p>Estado <strong>Publicado</strong> · {publishedSelected.visibleInOBS?'Marcada al aire':'Fuera del aire'}</p>
-          <p className="text-slate-400 leading-relaxed">Esta vista no acepta cambios. El borrador permanece intacto y puede editarse cuando regreses al modo Borrador.</p>
+          <p className="text-slate-400 leading-relaxed">Esta vista es de solo lectura. El borrador permanece intacto para edición.</p>
           <button type="button" className="studio-publish-cta" onClick={()=>{setComparePublished(false);setPreviewOnly(false);}}>Volver al borrador</button>
         </div>}
-        {!comparePublished&&<div className="p-5 space-y-5 flex-1">
+        {!comparePublished&&<div className="p-3.5 space-y-4 flex-1">
           {selectedIds.length>1 && activeInspectorTab==='layers' && <div className="rounded-xl border border-orange-400/25 bg-orange-400/10 p-3 text-xs space-y-2">
             <strong className="text-orange-200">{selectedIds.length} capas seleccionadas</strong>
             <p className="text-slate-300">Agrupa, alinea o distribuye desde la barra del lienzo. Arrastra cualquiera de las seleccionadas para moverlas juntas. Ctrl+clic para sumar o quitar capas.</p>
